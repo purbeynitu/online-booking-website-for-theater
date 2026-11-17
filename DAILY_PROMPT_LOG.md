@@ -65,3 +65,11 @@
   - Configured Git remote `origin` to `https://github.com/nitupurbey/Online-booking-website-for-theatre.git`.
   - Committed all deployment workflow and build configurations locally to branch `main`.
   - Prepared one-click deployment instructions to publish live to GitHub Pages (`https://nitupurbey.github.io/Online-booking-website-for-theatre/`).
+
+### Interaction 5
+- **Prompt**: `https://github.com/purbeynitu/online-booking-website-for-theater.git`
+- **Changes Applied**:
+  - Updated Git remote origin to `https://github.com/purbeynitu/online-booking-website-for-theater.git`.
+  - Executed `git push -u origin main`.
+  - Identified GitHub 403 permission error: local Git credentials are authenticated as account `nitupurbey`, while the repository is under account `purbeynitu`.
+  - Documented two quick solutions: invite `nitupurbey` as collaborator on `purbeynitu/online-booking-website-for-theater` or push directly from current terminal session.
