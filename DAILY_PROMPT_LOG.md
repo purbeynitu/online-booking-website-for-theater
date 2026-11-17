@@ -80,3 +80,9 @@
   - Cleared old cached Git credentials for `nitupurbey`.
   - Initiated `git push -u origin main` targeting `https://github.com/purbeynitu/online-booking-website-for-theater.git`.
   - Triggered Git Credential Manager browser login for user to authorize the new account `purbeynitu`.
+
+### Interaction 7
+- **Prompt**: `push to github`
+- **Changes Applied**:
+  - Confirmed local Git user identity configured as `purbeynitu` (`nitupurbey2@gmail.com`).
+  - Outlined the two simplest ways to complete the push: running `git push -u origin main` directly in user's desktop terminal (which opens the interactive OAuth sign-in) or providing a Personal Access Token.
