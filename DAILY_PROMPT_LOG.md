@@ -55,3 +55,13 @@
   - Updated `src/components/Footer.jsx`: Girija Hall location, Janakpur contact, and NCHL NepalPay verified merchant assurances.
   - Tested and executed production build (`npm run build`) and restarted local live preview server at `http://localhost:4173/`.
   - Retained all changes strictly in local Git commits without pushing to GitHub per user's earlier instruction.
+
+### Interaction 4
+- **Prompt**: `deploy live using github`
+- **Changes Applied**:
+  - Installed `gh-pages` dependency and added `predeploy` and `deploy` scripts in `package.json`.
+  - Created `.github/workflows/deploy.yml` automated GitHub Actions workflow to build and deploy to GitHub Pages on every push to `main`.
+  - Re-verified production static build with `npm run build` (`dist/` bundle created with zero errors).
+  - Configured Git remote `origin` to `https://github.com/nitupurbey/Online-booking-website-for-theatre.git`.
+  - Committed all deployment workflow and build configurations locally to branch `main`.
+  - Prepared one-click deployment instructions to publish live to GitHub Pages (`https://nitupurbey.github.io/Online-booking-website-for-theatre/`).
