@@ -117,3 +117,4 @@
   - Updated GitHub Actions workflow (`.github/workflows/deploy.yml`) to build from `client/`.
   - Published updated production build to `gh-pages` branch (`Published`).
   - Verified live deployment at `https://purbeynitu.github.io/online-booking-website-for-theater/` (HTTP 200).
+  - Documented completion walkthrough in `walkthrough.md`.
