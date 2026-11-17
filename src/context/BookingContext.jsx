@@ -1,17 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_MOVIES, CITIES, THEATRES, SEAT_CATEGORIES, SNACKS, COUPONS, SAMPLE_BOOKINGS } from '../data/mockData';
+import { GIRIJA_HALL_INFO, INITIAL_MOVIES, SEAT_CATEGORIES, GIRIJA_CANTEEN_SNACKS, GIRIJA_COUPONS, SAMPLE_BOOKINGS } from '../data/mockData';
+import { generateNepalPayQr, processNepalPayPayment } from '../services/nepalPayService';
 
 const BookingContext = createContext();
 
 export function BookingProvider({ children }) {
-  // Cities & active city
-  const [selectedCity, setSelectedCity] = useState(() => {
-    return localStorage.getItem('cp_selected_city') || 'hyd';
-  });
+  // Hall details
+  const hallInfo = GIRIJA_HALL_INFO;
 
-  // Movies list (persisted in localStorage for Admin updates)
+  // Movies list (persisted in localStorage)
   const [movies, setMovies] = useState(() => {
-    const saved = localStorage.getItem('cp_movies');
+    const saved = localStorage.getItem('girija_movies');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { }
     }
@@ -20,27 +19,27 @@ export function BookingProvider({ children }) {
 
   // Bookings list (persisted in localStorage)
   const [bookings, setBookings] = useState(() => {
-    const saved = localStorage.getItem('cp_bookings');
+    const saved = localStorage.getItem('girija_bookings');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { }
     }
     return SAMPLE_BOOKINGS;
   });
 
-  // Active view: 'home' | 'movie-detail' | 'booking-flow' | 'ticket-success' | 'find-ticket' | 'admin'
+  // Current view: 'home' | 'booking-flow' | 'ticket-success' | 'find-ticket' | 'admin'
   const [currentView, setCurrentView] = useState('home');
 
-  // Currently inspected movie for detail modal
+  // Currently inspected movie for modal
   const [activeMovie, setActiveMovie] = useState(null);
 
-  // Active booking wizard state
+  // Active booking wizard details
   const [bookingDetails, setBookingDetails] = useState({
     movie: null,
-    theatre: null,
+    theatre: hallInfo,
     date: new Date().toISOString().split('T')[0],
-    showtime: '',
-    format: 'IMAX 2D',
-    screen: 'Screen 1 (Laser)',
+    showtime: '02:30 PM',
+    format: '2D Digital',
+    screen: hallInfo.screens[0].name,
     seats: [], // Array of seat objects { id, row, number, category, price }
     snacks: [], // Array of { id, name, price, quantity }
     coupon: null,
@@ -49,41 +48,38 @@ export function BookingProvider({ children }) {
       name: '',
       email: '',
       phone: ''
-    }
+    },
+    nepalPayInfo: null
   });
 
-  // Current completed ticket for display/print
+  // Completed Ticket
   const [completedTicket, setCompletedTicket] = useState(null);
 
-  // Search and filter states
+  // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [selectedLanguage, setSelectedLanguage] = useState('All');
-  const [movieTab, setMovieTab] = useState('now-showing'); // 'now-showing' | 'coming-soon'
+  const [movieTab, setMovieTab] = useState('now-showing');
 
-  // Admin authentication state
+  // Admin authentication
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return localStorage.getItem('cp_admin_auth') === 'true';
+    return localStorage.getItem('girija_admin_auth') === 'true';
   });
 
-  // Save movies & bookings to localStorage
+  // Local storage synchronization
   useEffect(() => {
-    localStorage.setItem('cp_movies', JSON.stringify(movies));
+    localStorage.setItem('girija_movies', JSON.stringify(movies));
   }, [movies]);
 
   useEffect(() => {
-    localStorage.setItem('cp_bookings', JSON.stringify(bookings));
+    localStorage.setItem('girija_bookings', JSON.stringify(bookings));
   }, [bookings]);
 
   useEffect(() => {
-    localStorage.setItem('cp_selected_city', selectedCity);
-  }, [selectedCity]);
-
-  useEffect(() => {
-    localStorage.setItem('cp_admin_auth', isAdminAuthenticated ? 'true' : 'false');
+    localStorage.setItem('girija_admin_auth', isAdminAuthenticated ? 'true' : 'false');
   }, [isAdminAuthenticated]);
 
-  // Pricing calculations
+  // Calculations in NPR
   const calculateSeatSubtotal = () => {
     return bookingDetails.seats.reduce((sum, s) => sum + s.price, 0);
   };
@@ -92,35 +88,34 @@ export function BookingProvider({ children }) {
     return bookingDetails.snacks.reduce((sum, s) => sum + (s.price * s.quantity), 0);
   };
 
-  const calculateConvenienceFee = () => {
+  const calculateServiceCharge = () => {
     const seatCount = bookingDetails.seats.length;
     if (seatCount === 0) return 0;
-    // Rs 35 per ticket convenience fee + GST
-    return Math.round(seatCount * 35.40);
+    // रू 20 local cinema service & municipal ticket fee
+    return seatCount * 20;
   };
 
   const calculateGrandTotal = () => {
     const seatSubtotal = calculateSeatSubtotal();
     const snacksTotal = calculateSnacksTotal();
-    const convFee = calculateConvenienceFee();
+    const fee = calculateServiceCharge();
     const discount = bookingDetails.discountAmount || 0;
-    const total = (seatSubtotal + snacksTotal + convFee) - discount;
+    const total = (seatSubtotal + snacksTotal + fee) - discount;
     return Math.max(0, Math.round(total));
   };
 
-  // Start booking a movie
-  const startBooking = (movie, preferredTheatre = null, preferredTime = null) => {
-    const cityTheatres = THEATRES.filter(t => t.cityId === selectedCity);
-    const defaultTheatre = preferredTheatre || cityTheatres[0] || THEATRES[0];
-    const defaultTime = preferredTime || (defaultTheatre?.showtimes?.[0] || '01:30 PM');
+  // Start booking
+  const startBooking = (movie, preferredTime = null, preferredScreen = null) => {
+    const defaultTime = preferredTime || hallInfo.showtimes[1] || '02:30 PM';
+    const defaultScreen = preferredScreen || hallInfo.screens[0].name;
 
     setBookingDetails({
-      movie: movie,
-      theatre: defaultTheatre,
+      movie,
+      theatre: hallInfo,
       date: new Date().toISOString().split('T')[0],
       showtime: defaultTime,
-      format: movie.formats[0] || '2D',
-      screen: defaultTheatre.screens[0] || 'Screen 1',
+      format: movie.formats[0] || '2D Digital',
+      screen: defaultScreen,
       seats: [],
       snacks: [],
       coupon: null,
@@ -129,12 +124,13 @@ export function BookingProvider({ children }) {
         name: '',
         email: '',
         phone: ''
-      }
+      },
+      nepalPayInfo: null
     });
     setCurrentView('booking-flow');
   };
 
-  // Seat toggle logic
+  // Toggle seat selection
   const toggleSeat = (seat) => {
     setBookingDetails(prev => {
       const exists = prev.seats.some(s => s.id === seat.id);
@@ -145,7 +141,7 @@ export function BookingProvider({ children }) {
         };
       } else {
         if (prev.seats.length >= 8) {
-          alert('You can select a maximum of 8 seats per booking.');
+          alert('अधिकतम ८ वटा टिकट मात्र छान्न सकिन्छ (Maximum 8 seats per booking).');
           return prev;
         }
         return {
@@ -156,7 +152,7 @@ export function BookingProvider({ children }) {
     });
   };
 
-  // Snacks quantity update
+  // Update snack quantity
   const updateSnackQuantity = (snack, change) => {
     setBookingDetails(prev => {
       const existing = prev.snacks.find(s => s.id === snack.id);
@@ -184,22 +180,27 @@ export function BookingProvider({ children }) {
     });
   };
 
-  // Apply discount coupon
-  const applyCoupon = (couponCode) => {
-    const code = couponCode.trim().toUpperCase();
-    const matched = COUPONS.find(c => c.code === code);
+  // Apply Nepali coupon
+  const applyCoupon = (code) => {
+    const trimmed = code.trim().toUpperCase();
+    const matched = GIRIJA_COUPONS.find(c => c.code === trimmed);
     if (!matched) {
-      return { success: false, message: 'Invalid promo code. Try CINEPASS50' };
+      return { success: false, message: 'अमान्य कुपन कोड (Invalid promo code. Try GIRIJA50 or JANAKPUR20)' };
     }
 
     const subtotal = calculateSeatSubtotal() + calculateSnacksTotal();
     if (subtotal < matched.minAmount) {
-      return { success: false, message: `Minimum order amount for this coupon is ₹${matched.minAmount}` };
+      return { success: false, message: `न्यूनतम रू ${matched.minAmount} को अर्डर हुनुपर्छ (Minimum order रू ${matched.minAmount})` };
     }
 
-    let discount = Math.round((subtotal * matched.discountPercent) / 100);
-    if (discount > matched.maxDiscount) {
-      discount = matched.maxDiscount;
+    let discount = 0;
+    if (matched.discountAmount) {
+      discount = matched.discountAmount;
+    } else if (matched.discountPercent) {
+      discount = Math.round((subtotal * matched.discountPercent) / 100);
+      if (matched.maxDiscount && discount > matched.maxDiscount) {
+        discount = matched.maxDiscount;
+      }
     }
 
     setBookingDetails(prev => ({
@@ -208,7 +209,7 @@ export function BookingProvider({ children }) {
       discountAmount: discount
     }));
 
-    return { success: true, message: `Coupon ${matched.code} applied! Saved ₹${discount}` };
+    return { success: true, message: `कुपन ${matched.code} सफल भयो! रू ${discount} छुट पाइयो!` };
   };
 
   const removeCoupon = () => {
@@ -219,20 +220,30 @@ export function BookingProvider({ children }) {
     }));
   };
 
-  // Complete booking and generate ticket
-  const finalizeBooking = (customerInfo, paymentMethod) => {
-    const bookingId = `CP-${Math.floor(100000 + Math.random() * 900000)}`;
+  // Finalize booking via NepalPay
+  const finalizeBookingWithNepalPay = async (customerInfo, gatewayChoice) => {
+    const bookingId = `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
     const grandTotal = calculateGrandTotal();
+
+    // Call NepalPay service
+    const paymentResult = await processNepalPayPayment({
+      gateway: gatewayChoice,
+      amount: grandTotal,
+      bookingId,
+      customer: customerInfo
+    });
 
     const newTicket = {
       bookingId,
       createdAt: new Date().toISOString(),
       movieId: bookingDetails.movie.id,
       movieTitle: bookingDetails.movie.title,
+      nepaliTitle: bookingDetails.movie.nepaliTitle,
       moviePoster: bookingDetails.movie.poster,
-      theatreName: bookingDetails.theatre.name,
-      city: CITIES.find(c => c.id === selectedCity)?.name || 'Hyderabad',
-      location: bookingDetails.theatre.location,
+      theatreName: hallInfo.name,
+      nepaliTheatreName: hallInfo.nepaliName,
+      address: hallInfo.address,
+      phone: hallInfo.phone,
       screen: bookingDetails.screen,
       format: bookingDetails.format,
       date: bookingDetails.date,
@@ -245,10 +256,13 @@ export function BookingProvider({ children }) {
       customerPhone: customerInfo.phone,
       seatSubtotal: calculateSeatSubtotal(),
       snacksTotal: calculateSnacksTotal(),
-      convenienceFee: calculateConvenienceFee(),
+      serviceCharge: calculateServiceCharge(),
       discount: bookingDetails.discountAmount,
       totalAmount: grandTotal,
-      paymentMethod,
+      currency: "रू (NPR)",
+      gateway: gatewayChoice,
+      nepalPayTxId: paymentResult.transactionId,
+      paymentRef: paymentResult.paymentRef,
       status: 'CONFIRMED'
     };
 
@@ -258,29 +272,23 @@ export function BookingProvider({ children }) {
     return newTicket;
   };
 
-  // Admin actions: Add / Remove movie
-  const addMovie = (newMovie) => {
-    setMovies(prev => [newMovie, ...prev]);
+  // Admin controls
+  const addMovie = (movie) => {
+    setMovies(prev => [movie, ...prev]);
   };
 
   const deleteMovie = (id) => {
     setMovies(prev => prev.filter(m => m.id !== id));
   };
 
-  const updateMovie = (updatedMovie) => {
-    setMovies(prev => prev.map(m => m.id === updatedMovie.id ? updatedMovie : m));
-  };
-
   return (
     <BookingContext.Provider
       value={{
-        selectedCity,
-        setSelectedCity,
-        cities: CITIES,
+        hallInfo,
         movies,
-        theatres: THEATRES,
-        snacksList: SNACKS,
-        coupons: COUPONS,
+        seatCategories: SEAT_CATEGORIES,
+        snacksList: GIRIJA_CANTEEN_SNACKS,
+        coupons: GIRIJA_COUPONS,
         bookings,
         currentView,
         setCurrentView,
@@ -305,13 +313,12 @@ export function BookingProvider({ children }) {
         updateSnackQuantity,
         applyCoupon,
         removeCoupon,
-        finalizeBooking,
+        finalizeBookingWithNepalPay,
         addMovie,
         deleteMovie,
-        updateMovie,
         calculateSeatSubtotal,
         calculateSnacksTotal,
-        calculateConvenienceFee,
+        calculateServiceCharge,
         calculateGrandTotal
       }}
     >

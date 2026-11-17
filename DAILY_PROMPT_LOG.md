@@ -29,3 +29,29 @@
 - **Changes Applied**:
   - Paused remote GitHub push operations per user explicit instruction; all commits and changes remain stored locally in workspace Git repository on branch `main`.
   - Confirmed local production preview server remains active at `http://localhost:4173/`.
+
+### Interaction 3
+- **Prompt**: `make website for only girija hall janakpur . and online gateway through nepal pay repo`
+- **Changes Applied**:
+  - Refactored whole application specifically and exclusively for **Girija Cinema Hall, Janakpurdham (Station Road, Dhanusha, Nepal)**.
+  - Installed and integrated `nepal-pay` package ([Ranjeet2063/nepal-pay](https://github.com/Ranjeet2063/nepal-pay)) with unified support for NepalPay QR, eSewa ePaisa V2, Khalti V2, and connectIPS.
+  - Implemented `src/services/nepalPayService.js`: Dynamic EMVCo/NCHL-compliant NepalPay QR payload generation, countdown expiration timer, and payment verification simulation.
+  - Updated `src/data/mockData.js`:
+    - Venue: Girija Cinema Hall, Janakpur (Audi 1 Dolby Atmos 7.1 with 380 seats & Audi 2 Qube Digital 2K with 220 seats).
+    - Pricing in Nepali Rupees (NPR / रू): Balcony (रू ३००), Deluxe (रू २२०), Standard (रू १५०).
+    - Authentic Janakpur movie lineup: Purna Bahadur Ko Sarangi, 12 Gaun, Pushpa 2: The Rule, Behuli From Meghauli, Veer Lorik (Maithili/Bhojpuri), Gladiator II.
+    - Girija Canteen specials: Samosa Chaat (रू १००), Butter Popcorn (रू १२०), Wai Wai Sadeko (रू ८०), Coke (रू ७०), Masala Tea (रू ३५).
+    - Nepali coupons: `GIRIJA50`, `JANAKPUR20`, `NEPALPAY10`.
+  - Updated `src/context/BookingContext.jsx`: Single-theatre venue configuration, NPR calculation logic, and NepalPay transaction store.
+  - Updated `src/components/Navbar.jsx`: Girija Cinema Hall Janakpur branding, Station Road address, phone helpline (`041-520123`), and NepalPay QR badge.
+  - Updated `src/components/HeroBanner.jsx`: Janakpur spotlight, Nepali titles, sound badges, and NPR ticket pricing.
+  - Updated `src/components/ShowtimeSelector.jsx`: Girija Hall Audi 1 & Audi 2 screen selections with 4 daily showtimes (11:30 AM, 02:30 PM, 05:45 PM, 08:45 PM).
+  - Updated `src/components/SeatMap.jsx`: Balcony, Deluxe, and Standard tiers in Nepali Rupees with authentic hall seating matrix.
+  - Updated `src/components/SnacksSelector.jsx`: Janakpur canteen menu ordering.
+  - Updated `src/components/CheckoutModal.jsx`: Comprehensive NepalPay gateway UI with tabs for NepalPay QR (all Nepali bank apps), eSewa ePaisa V2, Khalti, and connectIPS.
+  - Updated `src/components/TicketSuccess.jsx`: Girija Cinema Hall official E-ticket with NepalPay transaction ref, QR code, and print/PDF download.
+  - Updated `src/components/FindTicket.jsx`: Lookup tickets booked at Girija Cinema Hall.
+  - Updated `src/components/AdminDashboard.jsx`: Box office revenue in NPR and NepalPay transaction ledger.
+  - Updated `src/components/Footer.jsx`: Girija Hall location, Janakpur contact, and NCHL NepalPay verified merchant assurances.
+  - Tested and executed production build (`npm run build`) and restarted local live preview server at `http://localhost:4173/`.
+  - Retained all changes strictly in local Git commits without pushing to GitHub per user's earlier instruction.

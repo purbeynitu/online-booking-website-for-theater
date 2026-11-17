@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Star, Clock, Calendar, Ticket, Play, User } from 'lucide-react';
+import { X, Star, Clock, Ticket, User } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 
 export default function MovieDetailModal() {
@@ -22,7 +22,6 @@ export default function MovieDetailModal() {
     startBooking(targetMovie);
   };
 
-  // Extract YouTube ID if valid
   const getEmbedUrl = (url) => {
     if (!url) return null;
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
@@ -89,6 +88,12 @@ export default function MovieDetailModal() {
                 {activeMovie.title}
               </h2>
 
+              {activeMovie.nepaliTitle && (
+                <p className="text-base sm:text-lg font-bold text-amber-400 font-serif mt-1">
+                  {activeMovie.nepaliTitle}
+                </p>
+              )}
+
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
                 {activeMovie.genre.join(' • ')}
               </p>
@@ -107,7 +112,7 @@ export default function MovieDetailModal() {
 
           {/* Formats */}
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs font-semibold text-slate-400 self-center mr-2">Available in:</span>
+            <span className="text-xs font-semibold text-slate-400 self-center mr-2">स्क्रिनिङ:</span>
             {activeMovie.formats.map((fmt, i) => (
               <span key={i} className="text-xs bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1 rounded-lg font-mono">
                 {fmt}
@@ -118,17 +123,17 @@ export default function MovieDetailModal() {
           {/* Synopsis */}
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Storyline
+              कथावस्तु (Synopsis)
             </h4>
             <p className="text-sm text-slate-300 leading-relaxed">
               {activeMovie.synopsis}
             </p>
           </div>
 
-          {/* Cast & Director */}
+          {/* Cast */}
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-              Cast & Crew
+              कलाकार तथा निर्देशक (Cast & Director)
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {activeMovie.cast.map((actor, idx) => (
@@ -145,7 +150,7 @@ export default function MovieDetailModal() {
             </div>
             {activeMovie.director && (
               <div className="text-xs text-slate-400 mt-2">
-                Directed by <span className="text-white font-semibold">{activeMovie.director}</span>
+                निर्देशक: <span className="text-white font-semibold">{activeMovie.director}</span>
               </div>
             )}
           </div>
@@ -153,7 +158,7 @@ export default function MovieDetailModal() {
           {/* Footer CTAs */}
           <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-xs text-slate-400">
-              Select date, preferred cinema and seats in the next step.
+              गिरिजा सिनेमा हल, जनकपुरधाम • नेपाल पे अनलाइन टिकटिङ
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -161,16 +166,16 @@ export default function MovieDetailModal() {
                 onClick={() => setActiveMovie(null)}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition-colors"
               >
-                Close
+                बन्द गर्नुहोस्
               </button>
 
               {activeMovie.status === 'now-showing' && (
                 <button
                   onClick={handleBook}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-rose-600/30 transition-all"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-rose-900/30 transition-all text-xs"
                 >
                   <Ticket className="w-4 h-4" />
-                  <span>Select Showtime & Book</span>
+                  <span>शो समय र सिट छान्नुहोस्</span>
                 </button>
               )}
             </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Utensils, Plus, Minus, ChevronLeft, ChevronRight, Sparkles, Check } from 'lucide-react';
+import { Plus, Minus, ChevronLeft, ChevronRight, Utensils } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 
 export default function SnacksSelector({ onBack, onNext }) {
@@ -23,29 +23,29 @@ export default function SnacksSelector({ onBack, onNext }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       
-      {/* Step Header */}
-      <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="bg-slate-900/70 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">
-            Step 3 of 3: Snacks & Refreshments (Optional)
+            चरण ३: गिरिजा सिनेमा हल क्यान्टिन (वैकल्पिक)
           </span>
-          <h2 className="text-2xl font-extrabold text-white mt-0.5">
-            Grab Your Cinema Bites
+          <h2 className="text-2xl font-black text-white mt-0.5">
+            सिनेमा खाजा र चिसो पेय पदार्थ
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Pre-order delicious hot popcorn, crispy nachos and chilled beverages for in-seat delivery!
+            तातो समोसा, पपकर्न, चाउचाउ साँधेको र चिसो कोल्ड ड्रिंक्स सिटमै डेलिभरीका लागि अर्डर गर्नुहोस्।
           </p>
         </div>
 
         <button
           onClick={onNext}
-          className="text-xs font-semibold text-slate-400 hover:text-white underline underline-offset-4 self-start md:self-auto"
+          className="text-xs font-semibold text-rose-400 hover:text-white underline underline-offset-4 self-start md:self-auto"
         >
-          Skip snacks and go straight to checkout →
+          खाजा नलिई सिधै नेपाल पे भुक्तानीमा जानुहोस् →
         </button>
       </div>
 
-      {/* Snacks Cards Grid */}
+      {/* Canteen Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {snacksList.map((snack) => {
           const qty = getItemQuantity(snack.id);
@@ -77,7 +77,7 @@ export default function SnacksSelector({ onBack, onNext }) {
 
                 {snack.popular && (
                   <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30 shrink-0">
-                    Bestseller
+                    लोकप्रिय
                   </span>
                 )}
               </div>
@@ -85,7 +85,7 @@ export default function SnacksSelector({ onBack, onNext }) {
               {/* Price & Quantity Controls */}
               <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between">
                 <div className="text-base font-extrabold text-white">
-                  ₹{snack.price}
+                  रू {snack.price}
                 </div>
 
                 {qty === 0 ? (
@@ -94,7 +94,7 @@ export default function SnacksSelector({ onBack, onNext }) {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white text-xs font-bold transition-all border border-slate-700 hover:border-rose-500"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
+                    <span>थप्नुहोस्</span>
                   </button>
                 ) : (
                   <div className="flex items-center gap-2 bg-slate-800 border border-rose-500/60 rounded-lg p-1">
@@ -128,24 +128,24 @@ export default function SnacksSelector({ onBack, onNext }) {
           className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors self-start sm:self-auto"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Back to Seat Selection</span>
+          <span>पछाडि फर्कनुहोस् (Back to Seats)</span>
         </button>
 
         <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
           <div>
             <div className="text-[11px] text-slate-400">
-              Seats (₹{seatTotal}) + Snacks (₹{snacksTotal})
+              सिट (रू {seatTotal}) + क्यान्टिन (रू {snacksTotal})
             </div>
             <div className="text-lg font-black text-white">
-              ₹{combined}
+              रू {combined}
             </div>
           </div>
 
           <button
             onClick={onNext}
-            className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold px-7 py-3 rounded-xl shadow-lg shadow-rose-600/30 transition-all"
+            className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold px-7 py-3 rounded-xl shadow-lg shadow-rose-600/30 transition-all text-xs sm:text-sm"
           >
-            <span>Proceed to Checkout</span>
+            <span>नेपाल पे भुक्तानीमा जानुहोस् (Checkout)</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

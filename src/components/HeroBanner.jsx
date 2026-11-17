@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Ticket, Star, Clock, Calendar, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Ticket, Star, Clock, Sparkles, ChevronLeft, ChevronRight, MapPin, Volume2 } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 
 export default function HeroBanner() {
-  const { movies, startBooking, setActiveMovie } = useBooking();
+  const { movies, startBooking, setActiveMovie, hallInfo } = useBooking();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const featuredMovies = movies.filter(m => m.status === 'now-showing').slice(0, 4);
 
-  // Auto carousel slide every 7s
   useEffect(() => {
     if (featuredMovies.length === 0) return;
     const interval = setInterval(() => {
@@ -31,13 +30,13 @@ export default function HeroBanner() {
 
   return (
     <div className="relative w-full h-[520px] md:h-[580px] overflow-hidden bg-slate-950">
-      {/* Background Banner with Gradients */}
+      {/* Background Banner with Dark Vignette */}
       <div 
         className="absolute inset-0 bg-cover bg-center transition-all duration-1000 transform scale-105"
         style={{ backgroundImage: `url(${current.banner})` }}
       >
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080C14] via-[#080C14]/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#080C14] via-[#080C14]/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#080C14] via-[#080C14]/75 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#080C14] via-[#080C14]/85 to-transparent" />
       </div>
 
       {/* Content Container */}
@@ -45,18 +44,25 @@ export default function HeroBanner() {
         <div className="max-w-2xl space-y-4">
           
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-600/30 border border-rose-500/50 text-rose-400 text-xs font-semibold uppercase tracking-wider backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-600/30 border border-rose-500/50 text-rose-300 text-xs font-semibold uppercase tracking-wider backdrop-blur-sm">
             <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-            <span>Featured Spotlight • Now Showing</span>
+            <span>गिरिजा सिनेमा हल • जनकपुरधाम विशेष</span>
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight drop-shadow-md">
-            {current.title}
-          </h1>
+          <div>
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight drop-shadow-md">
+              {current.title}
+            </h1>
+            {current.nepaliTitle && (
+              <p className="text-base md:text-xl font-bold text-amber-400 mt-1 font-serif">
+                {current.nepaliTitle}
+              </p>
+            )}
+          </div>
 
           {/* Meta Info */}
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300 font-medium">
+          <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-slate-300 font-medium">
             <div className="flex items-center gap-1.5 bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-md border border-amber-500/30 font-semibold">
               <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
               <span>{current.rating}</span>
@@ -76,43 +82,45 @@ export default function HeroBanner() {
 
             <span className="text-slate-600">•</span>
 
-            <span className="text-rose-400 font-semibold">{current.language}</span>
+            <span className="text-rose-400 font-bold">{current.language}</span>
 
             <span className="text-slate-600">•</span>
 
-            <span>{current.genre.join(', ')}</span>
+            <span className="text-slate-300">{current.genre.join(', ')}</span>
           </div>
 
           {/* Synopsis */}
-          <p className="text-sm md:text-base text-slate-300/90 line-clamp-2 md:line-clamp-3 leading-relaxed max-w-xl">
+          <p className="text-xs md:text-sm text-slate-300/90 line-clamp-2 md:line-clamp-3 leading-relaxed max-w-xl">
             {current.synopsis}
           </p>
 
-          {/* Formats Tags */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            {current.formats.map((fmt, i) => (
-              <span key={i} className="text-xs bg-slate-900/90 text-slate-300 border border-slate-700/80 px-2.5 py-1 rounded-md font-mono">
-                {fmt}
-              </span>
-            ))}
+          {/* Hall Audi & Showtimes Bar */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded-lg text-slate-300">
+              <Volume2 className="w-3.5 h-3.5 text-rose-500" />
+              <span>Dolby Surround 7.1 • Barco 2K Digital</span>
+            </div>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1.5 rounded-lg font-bold">
+              टिकट दर: रू १५० - रू ३००
+            </div>
           </div>
 
           {/* CTAs */}
           <div className="flex items-center gap-4 pt-3">
             <button
               onClick={() => startBooking(current)}
-              className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-rose-600/40 hover:shadow-rose-600/60 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-rose-600/40 hover:shadow-rose-600/60 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs sm:text-sm"
             >
               <Ticket className="w-5 h-5" />
-              <span>Book Tickets</span>
+              <span>टिकट बुक गर्नुहोस् (Book Tickets)</span>
             </button>
 
             <button
               onClick={() => setActiveMovie(current)}
-              className="flex items-center gap-2 bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white font-semibold px-5 py-3.5 rounded-xl border border-slate-700/80 backdrop-blur-md transition-all hover:border-slate-600"
+              className="flex items-center gap-2 bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white font-semibold px-5 py-3.5 rounded-xl border border-slate-700/80 backdrop-blur-md transition-all hover:border-slate-600 text-xs sm:text-sm"
             >
               <Play className="w-4 h-4 text-rose-500 fill-rose-500" />
-              <span>Watch Trailer & Details</span>
+              <span>ट्रेलर र विवरण</span>
             </button>
           </div>
         </div>

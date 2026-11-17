@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Clock, Ticket, Info, Bell, Play } from 'lucide-react';
+import { Star, Clock, Ticket, Info, Bell } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 
 export default function MovieCard({ movie }) {
@@ -24,13 +24,11 @@ export default function MovieCard({ movie }) {
 
         {/* Top Badges */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-          {/* Format Badge */}
-          <span className="bg-slate-950/80 backdrop-blur-md text-slate-200 text-[11px] font-bold px-2 py-0.5 rounded-md border border-slate-700/80">
+          <span className="bg-slate-950/80 backdrop-blur-md text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-700/80">
             {movie.formats[0]}
           </span>
 
-          {/* Age Rating */}
-          <span className="bg-slate-900/90 text-rose-400 text-[11px] font-bold px-2 py-0.5 rounded-md border border-rose-500/30">
+          <span className="bg-slate-900/90 text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-md border border-rose-500/30">
             {movie.ageRating}
           </span>
         </div>
@@ -43,30 +41,30 @@ export default function MovieCard({ movie }) {
         </div>
 
         {/* Hover Quick Actions */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/75 opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-slate-950/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-4">
           <button
             onClick={() => setActiveMovie(movie)}
             className="w-full py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-600 transition-colors shadow"
           >
             <Info className="w-4 h-4 text-rose-400" />
-            <span>View Synopsis & Cast</span>
+            <span>विवरण (Details)</span>
           </button>
 
           {!isComingSoon ? (
             <button
               onClick={() => startBooking(movie)}
-              className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/40 transition-colors"
+              className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-rose-900/40 transition-colors"
             >
               <Ticket className="w-4 h-4" />
-              <span>Book Show</span>
+              <span>टिकट बुक गर्नुहोस्</span>
             </button>
           ) : (
             <button
-              onClick={() => alert(`You have subscribed to release notifications for "${movie.title}"!`)}
+              onClick={() => alert(`तपाईंलाई "${movie.title}" को रिलिज सूचना पठाइनेछ!`)}
               className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 border border-amber-500/40 transition-colors"
             >
               <Bell className="w-4 h-4" />
-              <span>Notify on Release</span>
+              <span>सूचना पाउनुहोस्</span>
             </button>
           )}
         </div>
@@ -75,9 +73,15 @@ export default function MovieCard({ movie }) {
       {/* Card Info Details */}
       <div className="p-4 flex flex-col flex-1 justify-between gap-3">
         <div>
-          <h3 className="font-bold text-white text-base line-clamp-1 group-hover:text-rose-400 transition-colors">
+          <h3 className="font-extrabold text-white text-sm line-clamp-1 group-hover:text-rose-400 transition-colors">
             {movie.title}
           </h3>
+
+          {movie.nepaliTitle && (
+            <p className="text-xs font-bold text-amber-400 line-clamp-1 font-serif mt-0.5">
+              {movie.nepaliTitle}
+            </p>
+          )}
 
           <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
             <span>{movie.language}</span>
@@ -88,7 +92,7 @@ export default function MovieCard({ movie }) {
             </div>
           </div>
 
-          <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+          <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">
             {movie.genre.join(', ')}
           </p>
         </div>
@@ -98,14 +102,14 @@ export default function MovieCard({ movie }) {
           {!isComingSoon ? (
             <button
               onClick={() => startBooking(movie)}
-              className="w-full py-2 rounded-lg bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white text-xs font-bold transition-all border border-rose-500/20 hover:border-rose-600 flex items-center justify-center gap-1.5"
+              className="w-full py-2 rounded-lg bg-rose-600/15 hover:bg-rose-600 text-rose-300 hover:text-white text-xs font-bold transition-all border border-rose-500/25 hover:border-rose-600 flex items-center justify-center gap-1.5"
             >
               <Ticket className="w-3.5 h-3.5" />
-              <span>Book Tickets</span>
+              <span>टिकट काट्नुहोस् (रू १५०+)</span>
             </button>
           ) : (
             <div className="text-center py-1.5 text-xs text-amber-400/90 font-medium">
-              Releasing on {new Date(movie.releaseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              रिलिज: {new Date(movie.releaseDate).toLocaleDateString('ne-NP', { month: 'short', day: 'numeric' })}
             </div>
           )}
         </div>
