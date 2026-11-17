@@ -8,8 +8,17 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+*/node_modules
+client/node_modules
+server/node_modules
+
 dist
-dist-ssr
+*/dist
+client/dist
+
+# Environment variables
+.env
+.env.local
 *.local
 
 # Editor directories and files

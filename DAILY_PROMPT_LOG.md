@@ -101,3 +101,19 @@
   - Authored comprehensive backend recommendation and technical design document in artifact `backend_recommendation_plan.md`.
   - Evaluated Node.js/Express, Python/FastAPI, Laravel, and Supabase across NepalPay SDK compatibility, ACID seat locking, runtime overhead, and deployment.
   - Defined Prisma schema, REST endpoints, WebSocket architecture, and verification strategy for Girija Cinema Hall.
+
+### Interaction 10
+- **Prompt**: `i would prefer postgresql on supabase and yes organize the repo for client and server`
+- **Changes Applied**:
+  - Restructured repository into monorepo architecture: `client/` (React + Vite) and `server/` (Node.js + Express + Prisma).
+  - Migrated frontend files into `client/` preserving git history via `git mv`.
+  - Configured `server/package.json` with Express, Prisma ORM, Nepal-Pay, CORS, JWT, and bcrypt.
+  - Defined PostgreSQL schema on Supabase (`server/prisma/schema.prisma`) with models for Movie, Screen, Show, SeatHold (8-min ACID concurrency lock), Booking, and AdminUser.
+  - Implemented backend services: `SeatLockService` (`server/src/services/seatLockService.js`) and `ServerNepalPayService` (`server/src/services/nepalPayService.js`).
+  - Implemented modular Express routes: `/api/movies`, `/api/shows`, `/api/bookings`, `/api/payments`, `/api/admin`.
+  - Configured `server/.env.example` with Supabase pooler/direct connection strings and NepalPay merchant credentials.
+  - Generated Prisma client (`prisma generate`).
+  - Updated root `package.json` with workspace execution scripts (`client:dev`, `server:dev`, `deploy`).
+  - Updated GitHub Actions workflow (`.github/workflows/deploy.yml`) to build from `client/`.
+  - Published updated production build to `gh-pages` branch (`Published`).
+  - Verified live deployment at `https://purbeynitu.github.io/online-booking-website-for-theater/` (HTTP 200).

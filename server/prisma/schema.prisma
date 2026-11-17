@@ -1,0 +1,134 @@
+// Prisma Schema for Girija Cinema Hall Janakpur (PostgreSQL on Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Movie {
+  id          String      @id @default(cuid())
+  title       String
+  nepaliTitle String?
+  genre       String[]
+  language    String
+  formats     String[]
+  duration    String
+  rating      Float       @default(8.0)
+  votes       String?     @default("10K")
+  ageRating   String      @default("UA")
+  posterUrl   String
+  bannerUrl   String?
+  trailerUrl  String?
+  synopsis    String
+  director    String?
+  status      MovieStatus @default(NOW_SHOWING)
+  shows       Show[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum MovieStatus {
+  NOW_SHOWING
+  COMING_SOON
+  ARCHIVED
+}
+
+model Screen {
+  id          String   @id @default(cuid())
+  name        String   // "Audi 1: Main Hall (Dolby Atmos 7.1)" or "Audi 2: Gold Class (Qube Digital)"
+  soundSystem String
+  projection  String
+  capacity    Int      @default(380)
+  shows       Show[]
+  createdAt   DateTime @default(now())
+}
+
+model Show {
+  id        String     @id @default(cuid())
+  movieId   String
+  movie     Movie      @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  screenId  String
+  screen    Screen     @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  date      String     // YYYY-MM-DD
+  startTime String     // e.g. "11:30 AM", "02:30 PM", "05:45 PM", "08:45 PM"
+  bookings  Booking[]
+  seatHolds SeatHold[]
+  createdAt DateTime   @default(now())
+
+  @@index([date, startTime])
+}
+
+// ACID Concurrency: Holds a seat for 8 minutes during payment
+model SeatHold {
+  id        String   @id @default(cuid())
+  showId    String
+  show      Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  seatId    String   // e.g. "B5", "A10"
+  holderId  String   // Client temporary UUID or customer mobile
+  expiresAt DateTime // Now + 8 minutes
+  createdAt DateTime @default(now())
+
+  @@unique([showId, seatId])
+  @@index([expiresAt])
+}
+
+model Booking {
+  id             String         @id @default(cuid())
+  bookingRef     String         @unique // e.g. "GJ-892104"
+  showId         String
+  show           Show           @relation(fields: [showId], references: [id])
+  customerName   String
+  customerPhone  String
+  customerEmail  String
+  seats          String[]       // ["B5", "B6"]
+  snacks         Json?          // Array of { name, quantity, price }
+  seatSubtotal   Float
+  snacksTotal    Float          @default(0)
+  serviceCharge  Float          @default(20)
+  discountAmount Float          @default(0)
+  totalAmount    Float
+  paymentGateway PaymentGateway @default(NEPALPAY_QR)
+  paymentStatus  PaymentStatus  @default(PENDING)
+  nepalPayTxId   String?
+  paymentRef     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([customerPhone])
+  @@index([createdAt])
+}
+
+enum PaymentGateway {
+  NEPALPAY_QR
+  ESEWA
+  KHALTI
+  CONNECTIPS
+  FONEPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  fullName     String    @default("Girija Hall Manager")
+  role         AdminRole @default(MANAGER)
+  createdAt    DateTime  @default(now())
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  MANAGER
+  TICKET_OPERATOR
+}
