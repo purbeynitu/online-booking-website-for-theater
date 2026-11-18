@@ -118,3 +118,11 @@
   - Published updated production build to `gh-pages` branch (`Published`).
   - Verified live deployment at `https://purbeynitu.github.io/online-booking-website-for-theater/` (HTTP 200).
   - Documented completion walkthrough in `walkthrough.md`.
+
+## 2026-11-18
+
+### Interaction 11
+- **Prompt**: `npm run client:dev` failing with `ENOENT: no such file or directory, open 'C:\Users\nitup\package.json'`
+- **Changes Applied**:
+  - Diagnosed terminal working directory mismatch: command was executed from user home directory (`C:\Users\nitup`) instead of the project directory (`C:\Users\nitup\OneDrive\Desktop\Online booking website for theatre`).
+  - Provided clear step-by-step PowerShell navigation commands to change directory to the project workspace (`cd "OneDrive\Desktop\Online booking website for theatre"`) before running `npm run client:dev` or `npm run server:dev`.
