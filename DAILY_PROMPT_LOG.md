@@ -133,3 +133,13 @@
   - Created automated database seed script `server/src/db/seed.js` utilizing Prisma Client to seed Audi 1 (Dolby Atmos 7.1), Audi 2 (Qube Digital), Nepali cinema catalog (*Purna Bahadur Ko Sarangi*, *12 Gaun*, *Pushpa 2*), daily show schedules, and box office manager credentials.
   - Added root helper scripts in `package.json`: `db:migrate` (`npm run prisma:deploy --prefix server`) and `db:seed` (`npm run prisma:seed --prefix server`).
   - Authored comprehensive, step-by-step Supabase connection walkthrough detailing project creation, credentials retrieval (port 6543 pooler URL & port 5432 direct URL), `.env` setup, schema migration, and seeding.
+
+### Interaction 13
+- **Prompt**: Resolving Supabase authentication error `P1000` and `Environment variable not found: DATABASE_URL` during `npm run db:migrate` and `npm run db:seed`
+- **Changes Applied**:
+  - Diagnosed `P1000: Authentication failed`: Removed accidental square brackets `[` and `]` enclosing the password in `server/.env`.
+  - Diagnosed `Environment variable not found: DATABASE_URL`: Added `dotenv.config()` resolution to `server/src/db/seed.js` so `node` has access to `.env` variables during standalone script runs.
+  - Added `prisma:push` (`prisma db push`) script to `server/package.json` and `db:push` to root `package.json` for declarative schema syncing with Supabase.
+  - Successfully ran `npm run db:push` to create all PostgreSQL tables on Supabase.
+  - Successfully ran `npm run db:seed` to populate Girija Cinema Hall's Audi 1 & 2, movies, and showtimes directly into Supabase.
+  - Tested backend server with `Invoke-RestMethod http://localhost:5000/api/movies` confirming live database connection and data retrieval.
