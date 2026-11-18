@@ -9,6 +9,8 @@
     "client:preview": "npm run preview --prefix client",
     "server:dev": "npm run dev --prefix server",
     "server:start": "npm start --prefix server",
+    "db:migrate": "npm run prisma:deploy --prefix server",
+    "db:seed": "npm run prisma:seed --prefix server",
     "predeploy": "npm run client:build",
     "deploy": "gh-pages -d client/dist"
   },

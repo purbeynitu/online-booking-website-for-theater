@@ -126,3 +126,10 @@
 - **Changes Applied**:
   - Diagnosed terminal working directory mismatch: command was executed from user home directory (`C:\Users\nitup`) instead of the project directory (`C:\Users\nitup\OneDrive\Desktop\Online booking website for theatre`).
   - Provided clear step-by-step PowerShell navigation commands to change directory to the project workspace (`cd "OneDrive\Desktop\Online booking website for theatre"`) before running `npm run client:dev` or `npm run server:dev`.
+
+### Interaction 12
+- **Prompt**: `to connect my supabase databasewhat should i do , tell me details`
+- **Changes Applied**:
+  - Created automated database seed script `server/src/db/seed.js` utilizing Prisma Client to seed Audi 1 (Dolby Atmos 7.1), Audi 2 (Qube Digital), Nepali cinema catalog (*Purna Bahadur Ko Sarangi*, *12 Gaun*, *Pushpa 2*), daily show schedules, and box office manager credentials.
+  - Added root helper scripts in `package.json`: `db:migrate` (`npm run prisma:deploy --prefix server`) and `db:seed` (`npm run prisma:seed --prefix server`).
+  - Authored comprehensive, step-by-step Supabase connection walkthrough detailing project creation, credentials retrieval (port 6543 pooler URL & port 5432 direct URL), `.env` setup, schema migration, and seeding.
