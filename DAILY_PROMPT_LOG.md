@@ -169,3 +169,37 @@
   - Authored updated comprehensive redesign plan in artifact `ui_redesign_plan_v2.md`.
   - Built interactive Generative UI Studio (V2) artifact (`ui_design_studio_v2.html`) with real-time system switching, ambient lighting simulation, interactive seat selector, and live NepalPay QR ticket preview.
   - Created compact inline interactive Generative UI widget (`inline_redesign_preview.html`) embedded directly in chat.
+
+## 2026-11-19
+
+### Interaction 16
+- **Prompt**: `Connect Frontend to Backend`
+- **Changes Applied**:
+  - Implemented `client/src/services/api.js`: Unified API service client communicating with backend endpoints for movies, shows, hall info, real-time seat telemetry, ACID seat locking, booking persistence, ticket lookups, and admin analytics.
+  - Updated `client/vite.config.js`: Configured development proxy forwarding `/api` requests to `http://localhost:5000`.
+  - Updated `client/src/context/BookingContext.jsx`:
+    - Added backend health probing and live connectivity status tracking (`backendStatus`, `backendInfo`).
+    - Added asynchronous movie catalog syncing from Supabase PostgreSQL database via `apiGetMovies()`.
+    - Added client-side `holderId` generation for ACID concurrency seat reservations.
+    - Connected `finalizeBookingWithNepalPay` to `apiCreateBooking`, writing bookings directly to PostgreSQL on Supabase.
+    - Connected `addMovie` and `deleteMovie` to backend routes `apiCreateMovie` and `apiDeleteMovie`.
+  - Updated `client/src/components/SeatMap.jsx`:
+    - Connected seat map to `apiFindOrCreateShow` and `apiGetSeatsForShow` for live seat occupancy and reservation status.
+    - Connected interactive seat clicks to `apiHoldSeats` (8-minute ACID seat hold) and `apiReleaseSeats`.
+    - Integrated live occupied seat tracking combining database records and active seat holds.
+  - Updated `client/src/components/FindTicket.jsx`:
+    - Connected search input to `apiLookupBookings`, querying Supabase PostgreSQL database in real-time by booking ID, phone number, or patron name.
+    - Merged local fallback tickets with database records.
+  - Updated `client/src/components/AdminDashboard.jsx`:
+    - Integrated `apiAdminLogin` for JWT token generation and authentication with backend.
+    - Added live box office analytics retrieval via `apiGetAdminStats`, displaying real revenue and ticket volume from PostgreSQL.
+    - Added live database connection badge ("PostgreSQL (Supabase) Online").
+  - Updated `client/src/components/Navbar.jsx`:
+    - Added live backend connectivity pulse pill ("Supabase Backend Connected").
+  - Updated Backend Endpoints:
+    - `server/src/routes/movies.js`: Formatted movies, added `DELETE /api/movies/:id`, added data normalization (`posterUrl`, `bannerUrl`, `normalizedStatus`).
+    - `server/src/routes/shows.js`: Added `GET /api/shows` and `GET /api/shows/find-or-create`.
+    - `server/src/routes/bookings.js`: Added `GET /api/bookings` with query parameter search, improved `POST /api/bookings` with automated show resolution and seat hold release.
+    - `server/src/routes/admin.js`: Added credential validation for `girija_admin`, `admin`, and `girija`, added `GET /api/admin/health`.
+  - Verified end-to-end integration with automated test script: Health check, movies catalog, show creation, booking creation, ticket search, and admin analytics all passed.
+  - Executed production client build via `npm run client:build` (`dist/` created with 0 errors).

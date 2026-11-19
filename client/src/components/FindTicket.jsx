@@ -1,19 +1,101 @@
-import React, { useState } from 'react';
-import { Search, Ticket, Calendar, Clock, MapPin, Printer } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Ticket, Calendar, Clock, MapPin, Printer, Database, Loader2 } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
+import { apiLookupBookings } from '../services/api';
+
+function normalizeTicket(b) {
+  return {
+    bookingId: b.bookingRef || b.bookingId,
+    createdAt: b.createdAt,
+    movieId: b.show?.movie?.id || b.movieId || 'mov-purna-bahadur',
+    movieTitle: b.show?.movie?.title || b.movieTitle || 'Girija Movie',
+    nepaliTitle: b.show?.movie?.nepaliTitle || b.nepaliTitle || '',
+    moviePoster: b.show?.movie?.posterUrl || b.moviePoster || b.poster || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop',
+    theatreName: "Girija Cinema Hall",
+    nepaliTheatreName: "गिरिजा सिनेमा हल",
+    address: "Station Road, Janakpurdham, Dhanusha, Nepal",
+    phone: "+977 41-520123 / +977 9801234567",
+    screen: b.show?.screen?.name || b.screen || "Audi 1: Main Hall (Dolby Atmos 7.1)",
+    format: b.show?.movie?.formats?.[0] || b.format || "2D Digital",
+    date: b.show?.date || b.date || new Date().toISOString().split('T')[0],
+    time: b.show?.startTime || b.time || "02:30 PM",
+    seats: b.seats || [],
+    seatDetails: b.seatDetails || (b.seats || []).map(id => ({ id, row: id[0], number: id.slice(1), category: 'Ticket', price: Math.round((b.totalAmount || 300) / (b.seats?.length || 1)) })),
+    snacks: b.snacks || [],
+    customerName: b.customerName,
+    customerEmail: b.customerEmail,
+    customerPhone: b.customerPhone,
+    seatSubtotal: b.seatSubtotal || b.totalAmount || 0,
+    snacksTotal: b.snacksTotal || 0,
+    serviceCharge: b.serviceCharge || 20,
+    discount: b.discountAmount || 0,
+    totalAmount: b.totalAmount || 0,
+    currency: "रू (NPR)",
+    gateway: b.paymentGateway || b.gateway || 'NEPALPAY_QR',
+    nepalPayTxId: b.nepalPayTxId,
+    paymentRef: b.paymentRef,
+    status: b.paymentStatus || b.status || 'CONFIRMED',
+    isDatabaseRecord: !!b.id
+  };
+}
 
 export default function FindTicket() {
-  const { bookings, setCompletedTicket, setCurrentView, hallInfo } = useBooking();
+  const { bookings, setCompletedTicket, setCurrentView, hallInfo, backendStatus } = useBooking();
   const [searchTerm, setSearchTerm] = useState('');
+  const [dbResults, setDbResults] = useState([]);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
 
-  const filteredBookings = bookings.filter((b) => {
+  // Search Supabase database when user enters search term
+  useEffect(() => {
+    let isCurrent = true;
+    const lookup = async () => {
+      if (!searchTerm.trim()) {
+        setDbResults([]);
+        return;
+      }
+      setIsSearchingDb(true);
+      try {
+        const res = await apiLookupBookings(searchTerm.trim());
+        if (isCurrent && res && res.success && Array.isArray(res.data)) {
+          setDbResults(res.data.map(normalizeTicket));
+        }
+      } catch (err) {
+        console.warn('Backend ticket search note:', err.message);
+      } finally {
+        if (isCurrent) setIsSearchingDb(false);
+      }
+    };
+
+    const timer = setTimeout(lookup, 350);
+    return () => {
+      isCurrent = false;
+      clearTimeout(timer);
+    };
+  }, [searchTerm]);
+
+  // Combine local bookings with backend database results (deduplicating by bookingId)
+  const allAvailableTickets = React.useMemo(() => {
+    const map = new Map();
+    // 1. Add local tickets
+    bookings.forEach(b => {
+      if (b.bookingId) map.set(b.bookingId, b);
+    });
+    // 2. Add backend database tickets
+    dbResults.forEach(b => {
+      if (b.bookingId) map.set(b.bookingId, b);
+    });
+    return Array.from(map.values());
+  }, [bookings, dbResults]);
+
+  const filteredBookings = allAvailableTickets.filter((b) => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
     return (
-      b.bookingId.toLowerCase().includes(term) ||
+      (b.bookingId && b.bookingId.toLowerCase().includes(term)) ||
       (b.customerPhone && b.customerPhone.includes(term)) ||
       (b.customerEmail && b.customerEmail.toLowerCase().includes(term)) ||
-      b.movieTitle.toLowerCase().includes(term)
+      (b.movieTitle && b.movieTitle.toLowerCase().includes(term)) ||
+      (b.customerName && b.customerName.toLowerCase().includes(term))
     );
   });
 

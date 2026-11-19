@@ -33,36 +33,120 @@ router.post('/release-seats', async (req, res) => {
   }
 });
 
+// GET /api/bookings
+router.get('/', async (req, res) => {
+  try {
+    const { search, limit } = req.query;
+    if (prisma?.booking) {
+      let where = {};
+      if (search && search.trim()) {
+        const term = search.trim();
+        where = {
+          OR: [
+            { bookingRef: { contains: term, mode: 'insensitive' } },
+            { customerPhone: { contains: term } },
+            { customerEmail: { contains: term, mode: 'insensitive' } },
+            { customerName: { contains: term, mode: 'insensitive' } }
+          ]
+        };
+      }
+      const bookings = await prisma.booking.findMany({
+        where,
+        include: {
+          show: {
+            include: { movie: true, screen: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit ? parseInt(limit) : 50
+      });
+      return res.json({ success: true, data: bookings });
+    }
+    return res.json({ success: true, data: [] });
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/bookings (Confirm and create ticket)
 router.post('/', async (req, res) => {
   const bookingData = req.body;
-
-  const bookingRef = `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
+  const bookingRef = bookingData.bookingId || bookingData.bookingRef || `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
 
   try {
     let savedBooking;
 
     if (prisma?.booking) {
+      // Ensure target show exists to satisfy foreign key constraint
+      let targetShowId = bookingData.showId;
+      let validShow = null;
+
+      if (targetShowId) {
+        validShow = await prisma.show.findUnique({ where: { id: targetShowId } });
+      }
+
+      if (!validShow) {
+        const movieId = bookingData.movieId || 'mov-purna-bahadur';
+        const date = bookingData.date || new Date().toISOString().split('T')[0];
+        const time = bookingData.showtime || bookingData.time || '02:30 PM';
+        const screenId = (bookingData.screen && bookingData.screen.includes('2')) ? 'girija-audi-2' : 'girija-audi-1';
+
+        validShow = await prisma.show.findFirst({
+          where: { movieId, screenId, date, startTime: time }
+        });
+
+        if (!validShow) {
+          validShow = await prisma.show.findFirst();
+          if (!validShow) {
+            validShow = await prisma.show.create({
+              data: {
+                movieId: 'mov-purna-bahadur',
+                screenId: 'girija-audi-1',
+                date,
+                startTime: time
+              }
+            });
+          }
+        }
+        targetShowId = validShow.id;
+      }
+
       savedBooking = await prisma.booking.create({
         data: {
           bookingRef,
-          showId: bookingData.showId || 'default-show',
-          customerName: bookingData.customerName,
-          customerPhone: bookingData.customerPhone,
-          customerEmail: bookingData.customerEmail,
-          seats: bookingData.seats,
-          snacks: bookingData.snacks,
-          seatSubtotal: bookingData.seatSubtotal,
-          snacksTotal: bookingData.snacksTotal || 0,
-          serviceCharge: bookingData.serviceCharge || 20,
-          discountAmount: bookingData.discountAmount || 0,
-          totalAmount: bookingData.totalAmount,
-          paymentGateway: bookingData.paymentGateway || 'NEPALPAY_QR',
+          showId: targetShowId,
+          customerName: bookingData.customerName || bookingData.customer?.name || 'Girija Patron',
+          customerPhone: bookingData.customerPhone || bookingData.customer?.phone || '',
+          customerEmail: bookingData.customerEmail || bookingData.customer?.email || '',
+          seats: bookingData.seats || [],
+          snacks: bookingData.snacks || [],
+          seatSubtotal: parseFloat(bookingData.seatSubtotal) || 0,
+          snacksTotal: parseFloat(bookingData.snacksTotal) || 0,
+          serviceCharge: parseFloat(bookingData.serviceCharge) || 20,
+          discountAmount: parseFloat(bookingData.discountAmount || bookingData.discount) || 0,
+          totalAmount: parseFloat(bookingData.totalAmount) || 0,
+          paymentGateway: (bookingData.paymentGateway || bookingData.gateway || 'NEPALPAY_QR').toUpperCase().replace('-', '_'),
           paymentStatus: 'CONFIRMED',
           nepalPayTxId: bookingData.nepalPayTxId || `NPAY-${Date.now()}`,
           paymentRef: bookingData.paymentRef || `NCHL-${Date.now().toString().slice(-6)}`
+        },
+        include: {
+          show: {
+            include: { movie: true, screen: true }
+          }
         }
       });
+
+      // Release any seat holds for these seats
+      if (bookingData.seats && bookingData.seats.length > 0) {
+        await prisma.seatHold.deleteMany({
+          where: {
+            showId: targetShowId,
+            seatId: { in: bookingData.seats }
+          }
+        }).catch(() => {});
+      }
     } else {
       savedBooking = {
         id: `book-${Date.now()}`,
@@ -86,8 +170,18 @@ router.get('/:bookingRef', async (req, res) => {
 
   try {
     if (prisma?.booking) {
-      const booking = await prisma.booking.findUnique({
-        where: { bookingRef }
+      const booking = await prisma.booking.findFirst({
+        where: {
+          OR: [
+            { bookingRef },
+            { customerPhone: bookingRef }
+          ]
+        },
+        include: {
+          show: {
+            include: { movie: true, screen: true }
+          }
+        }
       });
       if (booking) return res.json({ success: true, data: booking });
     }

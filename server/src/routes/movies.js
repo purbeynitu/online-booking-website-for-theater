@@ -61,6 +61,24 @@ const FALLBACK_MOVIES = [
   }
 ];
 
+function formatMovie(m) {
+  if (!m) return m;
+  const poster = m.posterUrl || m.poster || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop';
+  const banner = m.bannerUrl || m.banner || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop';
+  const statusStr = (m.status || '').toLowerCase().replace(/_/g, '-');
+  const normalizedStatus = statusStr === 'coming-soon' ? 'coming-soon' : 'now-showing';
+
+  return {
+    ...m,
+    poster,
+    posterUrl: poster,
+    banner,
+    bannerUrl: banner,
+    status: normalizedStatus,
+    rawStatus: m.status
+  };
+}
+
 // GET /api/movies
 router.get('/', async (req, res) => {
   try {
@@ -69,13 +87,13 @@ router.get('/', async (req, res) => {
         orderBy: { createdAt: 'desc' }
       });
       if (movies.length > 0) {
-        return res.json({ success: true, data: movies });
+        return res.json({ success: true, data: movies.map(formatMovie) });
       }
     }
-    return res.json({ success: true, data: FALLBACK_MOVIES });
+    return res.json({ success: true, data: FALLBACK_MOVIES.map(formatMovie) });
   } catch (error) {
     console.warn('Database query fallback:', error.message);
-    res.json({ success: true, data: FALLBACK_MOVIES });
+    res.json({ success: true, data: FALLBACK_MOVIES.map(formatMovie) });
   }
 });
 
@@ -86,11 +104,11 @@ router.get('/:id', async (req, res) => {
       const movie = await prisma.movie.findUnique({
         where: { id: req.params.id }
       });
-      if (movie) return res.json({ success: true, data: movie });
+      if (movie) return res.json({ success: true, data: formatMovie(movie) });
     }
 
     const fallback = FALLBACK_MOVIES.find(m => m.id === req.params.id);
-    if (fallback) return res.json({ success: true, data: fallback });
+    if (fallback) return res.json({ success: true, data: formatMovie(fallback) });
 
     return res.status(404).json({ success: false, message: 'Movie not found' });
   } catch (error) {
@@ -102,14 +120,53 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const movieData = req.body;
+    const isComingSoon = (movieData.status || '').toLowerCase().includes('soon');
+    const prismaStatus = isComingSoon ? 'COMING_SOON' : 'NOW_SHOWING';
+
+    const payload = {
+      title: movieData.title,
+      nepaliTitle: movieData.nepaliTitle || '',
+      genre: Array.isArray(movieData.genre) ? movieData.genre : (movieData.genre ? movieData.genre.split(',').map(g => g.trim()) : ['Drama']),
+      language: movieData.language || 'Nepali',
+      formats: Array.isArray(movieData.formats) ? movieData.formats : (movieData.formats ? movieData.formats.split(',').map(f => f.trim()) : ['2D Digital']),
+      duration: movieData.duration || '2h 15m',
+      rating: parseFloat(movieData.rating) || 8.0,
+      votes: String(movieData.votes || '10K'),
+      ageRating: movieData.ageRating || 'UA',
+      posterUrl: movieData.poster || movieData.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop',
+      bannerUrl: movieData.banner || movieData.bannerUrl || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1600&auto=format&fit=crop',
+      trailerUrl: movieData.trailerUrl || '',
+      synopsis: movieData.synopsis || 'Screening at Girija Cinema Hall Janakpur.',
+      director: movieData.director || '',
+      status: prismaStatus
+    };
+
     if (prisma?.movie) {
       const created = await prisma.movie.create({
-        data: movieData
+        data: payload
       });
-      return res.status(201).json({ success: true, data: created });
+      return res.status(201).json({ success: true, data: formatMovie(created) });
     }
-    return res.status(201).json({ success: true, data: { ...movieData, id: `mov-${Date.now()}` } });
+    return res.status(201).json({ success: true, data: formatMovie({ ...payload, id: `mov-${Date.now()}` }) });
   } catch (error) {
+    console.error('Error creating movie:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/movies/:id (Admin)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (prisma?.movie) {
+      await prisma.movie.delete({
+        where: { id }
+      });
+      return res.json({ success: true, message: 'Movie deleted from database' });
+    }
+    return res.json({ success: true, message: 'Movie deleted (mock)' });
+  } catch (error) {
+    console.error('Error deleting movie:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

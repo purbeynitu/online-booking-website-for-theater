@@ -1,6 +1,17 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { GIRIJA_HALL_INFO, INITIAL_MOVIES, SEAT_CATEGORIES, GIRIJA_CANTEEN_SNACKS, GIRIJA_COUPONS, SAMPLE_BOOKINGS } from '../data/mockData';
 import { generateNepalPayQr, processNepalPayPayment } from '../services/nepalPayService';
+import {
+  fetchBackendHealth,
+  apiGetMovies,
+  apiCreateMovie,
+  apiDeleteMovie,
+  apiCreateBooking,
+  apiHoldSeats,
+  apiReleaseSeats,
+  apiFindOrCreateShow,
+  apiGetSeatsForShow
+} from '../services/api';
 
 const BookingContext = createContext();
 
@@ -8,7 +19,27 @@ export function BookingProvider({ children }) {
   // Hall details
   const hallInfo = GIRIJA_HALL_INFO;
 
-  // Movies list (persisted in localStorage)
+  // Backend connectivity state
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'connected' | 'offline' | 'checking'
+  const [backendInfo, setBackendInfo] = useState(null);
+  const [isLoadingMovies, setIsLoadingMovies] = useState(false);
+
+  // Client Holder ID for ACID seat reservation locks
+  const holderId = useMemo(() => {
+    let id = localStorage.getItem('girija_holder_id');
+    if (!id) {
+      id = `holder-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
+      localStorage.setItem('girija_holder_id', id);
+    }
+    return id;
+  }, []);
+
+  // Admin JWT token
+  const [adminToken, setAdminToken] = useState(() => {
+    return localStorage.getItem('girija_admin_jwt') || '';
+  });
+
+  // Movies list (persisted in localStorage as offline fallback)
   const [movies, setMovies] = useState(() => {
     const saved = localStorage.getItem('girija_movies');
     if (saved) {
@@ -25,6 +56,34 @@ export function BookingProvider({ children }) {
     }
     return SAMPLE_BOOKINGS;
   });
+
+  // Fetch backend movies & test health on initialization
+  const syncWithBackend = async () => {
+    try {
+      const health = await fetchBackendHealth();
+      if (health.connected) {
+        setBackendStatus('connected');
+        setBackendInfo(health.data);
+      } else {
+        setBackendStatus('offline');
+      }
+
+      setIsLoadingMovies(true);
+      const res = await apiGetMovies();
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setMovies(res.data);
+      }
+    } catch (err) {
+      console.warn('Backend sync note:', err.message);
+      setBackendStatus('offline');
+    } finally {
+      setIsLoadingMovies(false);
+    }
+  };
+
+  useEffect(() => {
+    syncWithBackend();
+  }, []);
 
   // Current view: 'home' | 'booking-flow' | 'ticket-success' | 'find-ticket' | 'admin'
   const [currentView, setCurrentView] = useState('home');
@@ -220,7 +279,7 @@ export function BookingProvider({ children }) {
     }));
   };
 
-  // Finalize booking via NepalPay
+  // Finalize booking via NepalPay & sync with Backend / Supabase
   const finalizeBookingWithNepalPay = async (customerInfo, gatewayChoice) => {
     const bookingId = `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
     const grandTotal = calculateGrandTotal();
@@ -239,7 +298,7 @@ export function BookingProvider({ children }) {
       movieId: bookingDetails.movie.id,
       movieTitle: bookingDetails.movie.title,
       nepaliTitle: bookingDetails.movie.nepaliTitle,
-      moviePoster: bookingDetails.movie.poster,
+      moviePoster: bookingDetails.movie.poster || bookingDetails.movie.posterUrl,
       theatreName: hallInfo.name,
       nepaliTheatreName: hallInfo.nepaliName,
       address: hallInfo.address,
@@ -263,8 +322,41 @@ export function BookingProvider({ children }) {
       gateway: gatewayChoice,
       nepalPayTxId: paymentResult.transactionId,
       paymentRef: paymentResult.paymentRef,
-      status: 'CONFIRMED'
+      status: 'CONFIRMED',
+      backendSynced: false
     };
+
+    // Save to Backend / Supabase database
+    try {
+      const res = await apiCreateBooking({
+        bookingRef: bookingId,
+        bookingId: bookingId,
+        movieId: bookingDetails.movie.id,
+        screen: bookingDetails.screen,
+        date: bookingDetails.date,
+        showtime: bookingDetails.showtime,
+        customerName: customerInfo.name,
+        customerPhone: customerInfo.phone,
+        customerEmail: customerInfo.email,
+        seats: bookingDetails.seats.map(s => s.id),
+        snacks: bookingDetails.snacks,
+        seatSubtotal: calculateSeatSubtotal(),
+        snacksTotal: calculateSnacksTotal(),
+        serviceCharge: calculateServiceCharge(),
+        discountAmount: bookingDetails.discountAmount,
+        totalAmount: grandTotal,
+        paymentGateway: gatewayChoice,
+        nepalPayTxId: paymentResult.transactionId,
+        paymentRef: paymentResult.paymentRef
+      });
+
+      if (res && res.success && res.data) {
+        newTicket.backendSynced = true;
+        if (res.data.bookingRef) newTicket.bookingId = res.data.bookingRef;
+      }
+    } catch (e) {
+      console.warn('Backend booking sync note (saved locally):', e.message);
+    }
 
     setBookings(prev => [newTicket, ...prev]);
     setCompletedTicket(newTicket);
@@ -272,12 +364,27 @@ export function BookingProvider({ children }) {
     return newTicket;
   };
 
-  // Admin controls
-  const addMovie = (movie) => {
+  // Admin controls connected to backend
+  const addMovie = async (movie) => {
+    try {
+      const res = await apiCreateMovie(movie, adminToken);
+      if (res && res.success && res.data) {
+        setMovies(prev => [res.data, ...prev]);
+        return res.data;
+      }
+    } catch (err) {
+      console.warn('Backend movie creation note (fallback local):', err.message);
+    }
     setMovies(prev => [movie, ...prev]);
+    return movie;
   };
 
-  const deleteMovie = (id) => {
+  const deleteMovie = async (id) => {
+    try {
+      await apiDeleteMovie(id, adminToken);
+    } catch (err) {
+      console.warn('Backend movie deletion note:', err.message);
+    }
     setMovies(prev => prev.filter(m => m.id !== id));
   };
 
@@ -290,6 +397,7 @@ export function BookingProvider({ children }) {
         snacksList: GIRIJA_CANTEEN_SNACKS,
         coupons: GIRIJA_COUPONS,
         bookings,
+        setBookings,
         currentView,
         setCurrentView,
         activeMovie,
@@ -308,6 +416,13 @@ export function BookingProvider({ children }) {
         setMovieTab,
         isAdminAuthenticated,
         setIsAdminAuthenticated,
+        adminToken,
+        setAdminToken,
+        backendStatus,
+        backendInfo,
+        isLoadingMovies,
+        syncWithBackend,
+        holderId,
         startBooking,
         toggleSeat,
         updateSnackQuantity,

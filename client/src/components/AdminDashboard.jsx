@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Plus, Trash2, Film, DollarSign, Ticket, Building2, Lock, ArrowLeft, QrCode } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Plus, Trash2, Film, DollarSign, Ticket, Building2, Lock, ArrowLeft, QrCode, Database, CheckCircle2 } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
+import { apiAdminLogin, apiGetAdminStats } from '../services/api';
 
 export default function AdminDashboard() {
   const {
@@ -11,6 +12,10 @@ export default function AdminDashboard() {
     hallInfo,
     isAdminAuthenticated,
     setIsAdminAuthenticated,
+    adminToken,
+    setAdminToken,
+    backendStatus,
+    backendInfo,
     setCurrentView
   } = useBooking();
 
@@ -19,6 +24,22 @@ export default function AdminDashboard() {
   const [adminUser, setAdminUser] = useState('');
   const [adminPass, setAdminPass] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [serverStats, setServerStats] = useState(null);
+
+  // Fetch live stats from backend
+  useEffect(() => {
+    let isMounted = true;
+    if (isAdminAuthenticated) {
+      apiGetAdminStats(adminToken).then(res => {
+        if (isMounted && res && res.success && res.data) {
+          setServerStats(res.data);
+        }
+      }).catch(err => {
+        console.warn('Backend admin stats note:', err.message);
+      });
+    }
+    return () => { isMounted = false; };
+  }, [isAdminAuthenticated, adminToken]);
 
   // Movie form
   const [newMovie, setNewMovie] = useState({
@@ -39,16 +60,36 @@ export default function AdminDashboard() {
     director: ''
   });
 
-  const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
-  const totalTicketsSold = bookings.reduce((sum, b) => sum + (b.seats ? b.seats.length : 1), 0);
+  const totalRevenue = serverStats?.totalRevenueNPR ?? bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  const totalTicketsSold = serverStats?.totalTicketsSold ?? bookings.reduce((sum, b) => sum + (b.seats ? b.seats.length : 1), 0);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if ((adminUser === 'admincinema' && adminPass === '--mnbvcxz--') || (adminUser === 'girija' && adminPass === 'janakpur123') || (adminUser === 'admin' && adminPass === 'admin123')) {
+    setLoginError('');
+
+    try {
+      const res = await apiAdminLogin(adminUser, adminPass);
+      if (res && res.success && res.token) {
+        setAdminToken(res.token);
+        localStorage.setItem('girija_admin_jwt', res.token);
+        setIsAdminAuthenticated(true);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend admin login attempt note:', err.message);
+    }
+
+    // Fallback static credential check
+    if (
+      (adminUser === 'admincinema' && adminPass === '--mnbvcxz--') ||
+      (adminUser === 'girija' && adminPass === 'janakpur123') ||
+      (adminUser === 'girija_admin' && adminPass === 'girija123') ||
+      (adminUser === 'admin' && adminPass === 'admin123')
+    ) {
       setIsAdminAuthenticated(true);
       setLoginError('');
     } else {
-      setLoginError('गलत युजरनेम वा पासवर्ड (Try admin / admin123 or girija / janakpur123)');
+      setLoginError('गलत युजरनेम वा पासवर्ड (Try girija_admin / girija123 or admin / admin123)');
     }
   };
 
@@ -161,6 +202,21 @@ export default function AdminDashboard() {
             <span>गिरिजा सिनेमा हल • जनकपुरधाम कन्ट्रोल सेन्टर</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white">Daily Operations & Box Office</h2>
+          <div className="flex items-center gap-2 mt-2">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+              backendStatus === 'connected'
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+            }`}>
+              <Database className="w-3.5 h-3.5" />
+              <span>{backendStatus === 'connected' ? 'PostgreSQL (Supabase) Online' : 'Local Offline Mode'}</span>
+            </span>
+            {backendStatus === 'connected' && (
+              <span className="text-[11px] text-slate-400">
+                • {movies.length} चलचित्रहरू • ACID सिट लक सक्रिय
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

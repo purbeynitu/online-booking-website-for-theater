@@ -42,6 +42,83 @@ router.get('/hall-info', (req, res) => {
   res.json({ success: true, data: GIRIJA_HALL_METADATA });
 });
 
+// GET /api/shows
+router.get('/', async (req, res) => {
+  try {
+    const { movieId, date } = req.query;
+    const where = {};
+    if (movieId) where.movieId = movieId;
+    if (date) where.date = date;
+
+    if (prisma?.show) {
+      const shows = await prisma.show.findMany({
+        where,
+        include: {
+          movie: true,
+          screen: true
+        },
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }]
+      });
+      return res.json({ success: true, data: shows });
+    }
+    return res.json({ success: true, data: [] });
+  } catch (error) {
+    console.error('Error fetching shows:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/shows/find-or-create
+router.get('/find-or-create', async (req, res) => {
+  try {
+    const { movieId, screenId, screenName, date, startTime } = req.query;
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const targetTime = startTime || '02:30 PM';
+    const targetScreenId = screenId || (screenName && screenName.includes('2') ? 'girija-audi-2' : 'girija-audi-1');
+    const targetMovieId = movieId || 'mov-purna-bahadur';
+
+    if (prisma?.show) {
+      let show = await prisma.show.findFirst({
+        where: {
+          movieId: targetMovieId,
+          screenId: targetScreenId,
+          date: targetDate,
+          startTime: targetTime
+        },
+        include: { movie: true, screen: true }
+      });
+
+      if (!show) {
+        show = await prisma.show.create({
+          data: {
+            movieId: targetMovieId,
+            screenId: targetScreenId,
+            date: targetDate,
+            startTime: targetTime
+          },
+          include: { movie: true, screen: true }
+        });
+      }
+
+      return res.json({ success: true, data: show });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        id: `show-${targetMovieId}-${targetScreenId}-${targetDate}-${targetTime.replace(/[: ]/g, '')}`,
+        movieId: targetMovieId,
+        screenId: targetScreenId,
+        date: targetDate,
+        startTime: targetTime
+      }
+    });
+  } catch (error) {
+    console.error('Error in find-or-create show:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/shows/:showId/seats
 router.get('/:showId/seats', async (req, res) => {
   const { showId } = req.params;

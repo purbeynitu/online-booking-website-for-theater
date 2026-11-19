@@ -1,18 +1,58 @@
-import React, { useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Check, ShieldCheck, Zap } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 import { SEAT_CATEGORIES } from '../data/mockData';
+import {
+  apiFindOrCreateShow,
+  apiGetSeatsForShow,
+  apiHoldSeats,
+  apiReleaseSeats
+} from '../services/api';
 
 export default function SeatMap({ onBack, onNext }) {
   const {
     bookingDetails,
     toggleSeat,
     calculateSeatSubtotal,
-    hallInfo
+    hallInfo,
+    holderId,
+    backendStatus
   } = useBooking();
 
-  // Pseudo-random booked seats for Girija Hall
-  const bookedSeatIds = useMemo(() => {
+  const [dbBookedSeats, setDbBookedSeats] = useState([]);
+  const [dbHeldSeats, setDbHeldSeats] = useState([]);
+  const [activeShowId, setActiveShowId] = useState(null);
+
+  // Fetch live seat status from Supabase backend
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveSeats = async () => {
+      try {
+        const res = await apiFindOrCreateShow({
+          movieId: bookingDetails.movie?.id,
+          screenName: bookingDetails.screen,
+          date: bookingDetails.date,
+          startTime: bookingDetails.showtime
+        });
+        if (res && res.data && res.data.id) {
+          if (isMounted) setActiveShowId(res.data.id);
+          const seatRes = await apiGetSeatsForShow(res.data.id);
+          if (isMounted && seatRes && seatRes.success) {
+            setDbBookedSeats(seatRes.bookedSeats || []);
+            setDbHeldSeats(seatRes.heldSeats || []);
+          }
+        }
+      } catch (err) {
+        console.warn('Real-time seat telemetry note:', err.message);
+      }
+    };
+
+    fetchLiveSeats();
+    return () => { isMounted = false; };
+  }, [bookingDetails.date, bookingDetails.showtime, bookingDetails.movie?.id, bookingDetails.screen]);
+
+  // Pseudo-random baseline occupancy for Girija Hall
+  const baselineBookedIds = useMemo(() => {
     const seed = `${bookingDetails.date}-${bookingDetails.showtime}-${bookingDetails.movie?.id}`;
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
@@ -32,12 +72,45 @@ export default function SeatMap({ onBack, onNext }) {
     return booked;
   }, [bookingDetails.date, bookingDetails.showtime, bookingDetails.movie?.id]);
 
+  // Combined booked seats including live Supabase bookings and active holds
+  const allOccupiedSeats = useMemo(() => {
+    const combined = new Set(baselineBookedIds);
+    dbBookedSeats.forEach(s => combined.add(s));
+    dbHeldSeats.forEach(h => {
+      if (h.holderId !== holderId) combined.add(h.seatId);
+    });
+    return combined;
+  }, [baselineBookedIds, dbBookedSeats, dbHeldSeats, holderId]);
+
   const selectedCount = bookingDetails.seats.length;
   const subtotal = calculateSeatSubtotal();
 
-  const handleSeatClick = (row, number, category) => {
+  const handleSeatClick = async (row, number, category) => {
     const seatId = `${row}${number}`;
-    if (bookedSeatIds.has(seatId)) return;
+    if (allOccupiedSeats.has(seatId)) return;
+
+    const isAlreadySelected = bookingDetails.seats.some(s => s.id === seatId);
+
+    // Call ACID seat hold / release on backend
+    if (activeShowId) {
+      try {
+        if (!isAlreadySelected) {
+          await apiHoldSeats({
+            showId: activeShowId,
+            seatIds: [seatId],
+            holderId
+          });
+        } else {
+          await apiReleaseSeats({
+            showId: activeShowId,
+            seatIds: [seatId],
+            holderId
+          });
+        }
+      } catch (e) {
+        console.warn('Seat lock API note:', e.message);
+      }
+    }
 
     toggleSeat({
       id: seatId,
@@ -119,7 +192,7 @@ export default function SeatMap({ onBack, onNext }) {
                   <div className="flex items-center gap-1.5">
                     {[1, 2, 3, 4, 5, 6, 7].map((num) => {
                       const seatId = `${row}${num}`;
-                      const isBooked = bookedSeatIds.has(seatId);
+                      const isBooked = allOccupiedSeats.has(seatId);
                       const isSelected = bookingDetails.seats.some(s => s.id === seatId);
 
                       return (
@@ -151,7 +224,7 @@ export default function SeatMap({ onBack, onNext }) {
                   <div className="flex items-center gap-1.5">
                     {[8, 9, 10, 11, 12, 13, 14].map((num) => {
                       const seatId = `${row}${num}`;
-                      const isBooked = bookedSeatIds.has(seatId);
+                      const isBooked = allOccupiedSeats.has(seatId);
                       const isSelected = bookingDetails.seats.some(s => s.id === seatId);
 
                       return (

@@ -9,7 +9,8 @@ export default function Navbar() {
     setSearchQuery,
     currentView,
     setCurrentView,
-    bookings
+    bookings,
+    backendStatus
   } = useBooking();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,13 +31,19 @@ export default function Navbar() {
             <span>स्टेशन रोड (रामानन्द चोक नजिकै), जनकपुरधाम, धनुषा, नेपाल</span>
           </div>
           <div className="flex items-center gap-4 text-[11px]">
-            <a href="tel:+97741520123" className="flex items-center gap-1 hover:text-white transition-colors">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${backendStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+              <span className="font-medium text-[10px] text-slate-300">
+                {backendStatus === 'connected' ? 'Supabase Backend Connected' : 'Local Standalone Mode'}
+              </span>
+            </div>
+            <a href="tel:+97741520123" className="hidden sm:flex items-center gap-1 hover:text-white transition-colors">
               <Phone className="w-3 h-3 text-amber-400" />
-              <span>सम्पर्क: ०४१-५२०१२३ / ९८०१२३४५६७</span>
+              <span>सम्पर्क: ०४१-५२०१२३</span>
             </a>
             <div className="hidden sm:flex items-center gap-1 text-emerald-300 font-semibold">
               <QrCode className="w-3 h-3" />
-              <span>NepalPay QR / eSewa / Khalti</span>
+              <span>NepalPay QR</span>
             </div>
           </div>
         </div>
