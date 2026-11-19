@@ -1,5 +1,6 @@
 import React from 'react';
-import { CheckCircle2, Printer, Film, MapPin, QrCode, ArrowLeft, Phone, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Printer, Film, MapPin, ArrowLeft, Phone, ShieldCheck, Ticket } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useBooking } from '../context/BookingContext';
 
 export default function TicketSuccess() {
@@ -23,6 +24,15 @@ export default function TicketSuccess() {
     window.print();
   };
 
+  const qrTicketValue = JSON.stringify({
+    ref: completedTicket.bookingId,
+    movie: completedTicket.movieTitle,
+    screen: completedTicket.screen,
+    showtime: `${completedTicket.date} ${completedTicket.time}`,
+    seats: completedTicket.seats,
+    status: completedTicket.status || 'CONFIRMED'
+  });
+
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6 space-y-8 animate-in fade-in duration-300">
       
@@ -35,7 +45,7 @@ export default function TicketSuccess() {
           टिकट बुकिङ सफल भयो! (Booking Confirmed)
         </h2>
         <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto">
-          नेपाल पे (NepalPay) मार्फत तपाईंको भुक्तानी स्वीकृत भएको छ। तपाईंको इ-टिकट र SMS <strong className="text-white">{completedTicket.customerPhone}</strong> मा पठाइएको छ।
+          नेपाल पे (NepalPay / eSewa) मार्फत तपाईंको भुक्तानी स्वीकृत भएको छ। तपाईंको इ-टिकट र SMS <strong className="text-white">{completedTicket.customerPhone}</strong> मा सुरक्षित गरिएको छ।
         </p>
       </div>
 
@@ -65,7 +75,7 @@ export default function TicketSuccess() {
               ● भुक्तानी सम्पन्न (CONFIRMED)
             </span>
             <div className="text-[10px] text-slate-400 print:text-slate-500 font-mono mt-1">
-              Tx: {completedTicket.nepalPayTxId}
+              Tx: {completedTicket.nepalPayTxId || completedTicket.paymentRef || 'NPAY-OK'}
             </div>
           </div>
         </div>
@@ -74,14 +84,16 @@ export default function TicketSuccess() {
         <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           
           <div className="md:col-span-8 flex gap-5">
-            <img
-              src={completedTicket.moviePoster}
-              alt={completedTicket.movieTitle}
-              className="w-24 sm:w-28 h-36 sm:h-40 object-cover rounded-xl border border-slate-700 shadow-md print:hidden"
-            />
+            {completedTicket.moviePoster && (
+              <img
+                src={completedTicket.moviePoster}
+                alt={completedTicket.movieTitle}
+                className="w-24 sm:w-28 h-36 sm:h-40 object-cover rounded-xl border border-slate-700 shadow-md print:hidden"
+              />
+            )}
             <div className="space-y-1.5 flex-1">
               <span className="bg-slate-800 text-slate-300 print:bg-slate-200 print:text-black text-[11px] font-bold px-2 py-0.5 rounded">
-                {completedTicket.format}
+                {completedTicket.format || '2D Digital'}
               </span>
               <h3 className="text-xl sm:text-2xl font-black text-white print:text-black leading-tight">
                 {completedTicket.movieTitle}
@@ -91,7 +103,7 @@ export default function TicketSuccess() {
               )}
               <p className="text-xs text-slate-400 print:text-slate-600 flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                <span>{hallInfo.address}</span>
+                <span>{completedTicket.address || hallInfo?.address || 'Station Road, Janakpurdham'}</span>
               </p>
               <p className="text-xs font-semibold text-rose-400 print:text-black">
                 {completedTicket.screen}
@@ -110,10 +122,15 @@ export default function TicketSuccess() {
             </div>
           </div>
 
-          {/* QR Code & Seats */}
+          {/* Scannable Gate QR Code & Seats */}
           <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-slate-950/80 print:bg-slate-50 rounded-2xl border border-slate-800 print:border-slate-200 text-center space-y-2">
-            <div className="w-24 h-24 bg-white p-2 rounded-xl shadow flex items-center justify-center">
-              <QrCode className="w-20 h-20 text-slate-900" />
+            <div className="p-2.5 bg-white rounded-xl shadow-lg border border-slate-200 flex items-center justify-center">
+              <QRCodeSVG
+                value={qrTicketValue}
+                size={100}
+                level="M"
+                includeMargin={false}
+              />
             </div>
             <div className="text-[10px] text-slate-400 print:text-slate-600 font-mono">
               हल प्रवेशद्वारमा यो QR देखाउनुहोस्
@@ -121,7 +138,7 @@ export default function TicketSuccess() {
             <div className="pt-1">
               <span className="text-[10px] uppercase font-bold text-slate-500 block">आरक्षित सिट (Seats)</span>
               <span className="text-base font-extrabold text-white print:text-black">
-                {completedTicket.seats.join(', ')}
+                {Array.isArray(completedTicket.seats) ? completedTicket.seats.join(', ') : completedTicket.seats}
               </span>
             </div>
           </div>
@@ -145,54 +162,53 @@ export default function TicketSuccess() {
             <div>
               <span>भुक्तानी माध्यम: </span>
               <strong className="text-white print:text-black uppercase">
-                {completedTicket.gateway.replace('_', ' ')} (NepalPay)
+                {(completedTicket.gateway || 'NepalPay').replace('_', ' ')}
               </strong>
+            </div>
+            <div>
+              <span>कुल भुक्तानी: </span>
+              <strong className="text-rose-400 print:text-black text-sm">रू {completedTicket.totalAmount}</strong>
             </div>
           </div>
 
           {completedTicket.snacks && completedTicket.snacks.length > 0 && (
-            <div className="text-slate-400 print:text-slate-600 text-[11px]">
-              <span>क्यान्टिन अर्डर: </span>
-              <strong className="text-white print:text-black">
-                {completedTicket.snacks.map(s => `${s.name} (x${s.quantity})`).join(', ')}
-              </strong>
+            <div className="text-[11px] text-slate-400 border-t border-slate-800/80 pt-2 print:border-slate-300">
+              <span className="font-semibold text-slate-300 print:text-black">क्यान्टिन अर्डर: </span>
+              {completedTicket.snacks.map(s => `${s.name} (x${s.quantity})`).join(', ')}
             </div>
           )}
-
-          <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 print:border-slate-200">
-            <span className="text-slate-400 print:text-slate-600">कुल भुक्तान रकम (Total Paid):</span>
-            <span className="text-lg font-black text-emerald-400 print:text-black">रू {completedTicket.totalAmount}</span>
-          </div>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="no-print flex flex-wrap items-center justify-between gap-4 pt-4">
+      <div className="no-print flex flex-col sm:flex-row gap-3 justify-center items-center">
         <button
-          onClick={() => setCurrentView('home')}
-          className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+          onClick={handlePrint}
+          className="w-full sm:w-auto px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 transition-colors flex items-center justify-center gap-2"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>अर्को चलचित्र हेर्नुहोस् (Browse Movies)</span>
+          <Printer className="w-4 h-4 text-rose-500" />
+          <span>टिकट प्रिन्ट / PDF सेभ गर्नुहोस् (Print Ticket)</span>
         </button>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setCurrentView('find-ticket')}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors border border-slate-700"
-          >
-            बुकिङ इतिहास (My Bookings)
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-rose-600/30 transition-all text-xs"
-          >
-            <Printer className="w-4 h-4" />
-            <span>टिकट प्रिन्ट / PDF सेभ गर्नुहोस्</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setCurrentView('home')}
+          className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-950/40 transition-all flex items-center justify-center gap-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>अर्को चलचित्र हेर्नुहोस् (Back to Movies)</span>
+        </button>
       </div>
+
+      {/* Entry Policy & Help */}
+      <div className="no-print bg-slate-900/50 p-4 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1 text-center">
+        <p className="font-semibold text-slate-300">
+          ⚠️ प्रवेश नियम: शो सुरु हुनुभन्दा १५ मिनेट अगावै हलमा उपस्थित हुनुहोला।
+        </p>
+        <p>
+          कुनै समस्या भएमा गिरिजा सिनेमा हलको सम्पर्क नं <strong>041-520123</strong> वा <strong>9801234567</strong> मा सम्पर्क गर्नुहोस्।
+        </p>
+      </div>
+
     </div>
   );
 }

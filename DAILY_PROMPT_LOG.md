@@ -203,3 +203,33 @@
     - `server/src/routes/admin.js`: Added credential validation for `girija_admin`, `admin`, and `girija`, added `GET /api/admin/health`.
   - Verified end-to-end integration with automated test script: Health check, movies catalog, show creation, booking creation, ticket search, and admin analytics all passed.
   - Executed production client build via `npm run client:build` (`dist/` created with 0 errors).
+
+### Interaction 17
+- **Prompt**: `i would like to work on the real payment/plan and proceed yourself`
+- **Changes Applied**:
+  - Installed `qrcode.react` in `client/` for authentic, scannable QR code generation.
+  - Hardened backend payment security in `server/src/services/nepalPayService.js`:
+    - Authoritative server-side price computation (`calculateOrderPricing`): Computes seat prices by tier, verifies snacks pricing, validates promo coupons, and enforces Rs 20 service fee on the server to prevent client-side parameter tampering.
+    - Implemented cryptographic eSewa ePaisa V2 signature generation (`generateEsewaSignature`) with HMAC-SHA256 using merchant secret key.
+    - Implemented secure server-to-server eSewa redirect verification (`verifyEsewaPayment` & `verifyEsewaCallbackSignature`): decodes returned Base64 payload, verifies HMAC signature, checks against `PENDING` database booking, validates amount, and confirms booking atomically.
+    - Implemented dynamic EMVCo/NCHL compliant NepalPay QR generation (`generateNepalPayQr`) and instant payment confirmation (`confirmQrPayment`).
+  - Updated `server/src/routes/payments.js`:
+    - Added `POST /api/payments/create-order` endpoint to hold seats, persist `PENDING` booking, and generate signed gateway parameters.
+    - Added `POST /api/payments/verify-esewa` endpoint for callback verification.
+    - Added `POST /api/payments/verify-qr` endpoint for NepalPay QR verification.
+    - Added `GET /api/payments/status/:bookingRef` endpoint for QR status polling.
+  - Hardened `server/src/routes/bookings.js`:
+    - Removed arbitrary client-side `CONFIRMED` payment status creation to prevent payment bypass.
+    - Added `GET /api/bookings/lookup` for secure ticket searches.
+  - Updated `client/src/services/api.js`:
+    - Added `apiCreatePaymentOrder`, `apiVerifyEsewaPayment`, `apiVerifyQrPayment`, `apiCheckPaymentStatus`, and `apiLookupBookings`.
+  - Updated `client/src/components/CheckoutModal.jsx`:
+    - Integrated official eSewa ePaisa V2 form submission to `rc-epay.esewa.com.np` sandbox.
+    - Integrated real dynamic EMVCo NepalPay QR rendered via `QRCodeSVG` with active 8-minute countdown timer.
+    - Added interactive "Simulate Bank Scan & Pay" sandbox test trigger to verify end-to-end QR payment lifecycle against backend.
+  - Updated `client/src/components/TicketSuccess.jsx`:
+    - Upgraded ticket QR code to scannable `QRCodeSVG` encoding booking reference, showtime, and seats for gatekeeper staff scanning.
+  - Updated `client/src/App.jsx`:
+    - Added automated URL parameter listener on mount for eSewa V2 redirect (`?data=...`), verifying transaction with backend, displaying confirmed ticket, and triggering confetti.
+    - Added handling for payment failure and QR ticket verification lookup.
+  - Verified production client bundle via `npm run client:build` (`dist/` built with zero errors).

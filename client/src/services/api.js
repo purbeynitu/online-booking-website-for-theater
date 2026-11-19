@@ -13,7 +13,6 @@ const getApiBase = () => {
   if (typeof window !== 'undefined') {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (isLocal) {
-      // In local dev, direct to localhost:5000 if not proxying, or use empty base for proxy
       return 'http://localhost:5000';
     }
   }
@@ -33,7 +32,7 @@ async function request(endpoint, options = {}) {
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 8000);
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 10000);
 
   try {
     const res = await fetch(url, {
@@ -73,7 +72,6 @@ export async function fetchBackendHealth() {
     return { connected: true, data: res };
   } catch (e) {
     try {
-      // Try /api/admin/health fallback
       const res2 = await request('/api/admin/health', { timeout: 3000 });
       return { connected: true, data: res2 };
     } catch (err) {
@@ -157,39 +155,65 @@ export async function apiReleaseSeats({ showId, seatIds, holderId }) {
 }
 
 /* ============================================================
-   BOOKINGS & TICKETS API
+   REAL SECURE PAYMENT API (eSewa & NepalPay)
    ============================================================ */
-export async function apiCreateBooking(bookingPayload) {
-  return await request('/api/bookings', {
+export async function apiCreatePaymentOrder({
+  showId,
+  seatIds,
+  snacks,
+  couponCode,
+  customer,
+  gateway
+}) {
+  const origin = window.location.origin + window.location.pathname;
+  return await request('/api/payments/create-order', {
     method: 'POST',
-    body: JSON.stringify(bookingPayload)
+    body: JSON.stringify({
+      showId,
+      seatIds,
+      snacks,
+      couponCode,
+      customer,
+      gateway,
+      origin
+    })
   });
 }
 
-export async function apiLookupBookings(searchQuery = '') {
-  const q = searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : '';
-  return await request(`/api/bookings${q}`);
+export async function apiVerifyEsewaPayment(encodedData) {
+  return await request('/api/payments/verify-esewa', {
+    method: 'POST',
+    body: JSON.stringify({ encodedData })
+  });
+}
+
+export async function apiVerifyQrPayment({ bookingRef, transactionRef }) {
+  return await request('/api/payments/verify-qr', {
+    method: 'POST',
+    body: JSON.stringify({ bookingRef, transactionRef })
+  });
+}
+
+export async function apiCheckPaymentStatus(bookingRef) {
+  return await request(`/api/payments/status/${encodeURIComponent(bookingRef)}`);
+}
+
+/* ============================================================
+   BOOKINGS & TICKETS API
+   ============================================================ */
+export async function apiCreateBooking(bookingPayload) {
+  return await request('/api/payments/create-order', {
+    method: 'POST',
+    body: JSON.stringify(bookingPayload)
+  });
 }
 
 export async function apiGetBookingByRef(bookingRef) {
   return await request(`/api/bookings/${encodeURIComponent(bookingRef)}`);
 }
 
-/* ============================================================
-   NEPALPAY & PAYMENT INTEGRATION API
-   ============================================================ */
-export async function apiGenerateNepalPayQr({ amount, bookingRef, customerName }) {
-  return await request('/api/payments/nepalpay/qr', {
-    method: 'POST',
-    body: JSON.stringify({ amount, bookingRef, customerName })
-  });
-}
-
-export async function apiGenerateEsewaSignature({ totalAmount, transactionUuid }) {
-  return await request('/api/payments/esewa/sign', {
-    method: 'POST',
-    body: JSON.stringify({ totalAmount, transactionUuid })
-  });
+export async function apiLookupBookings(query = '') {
+  return await request(`/api/bookings/lookup?query=${encodeURIComponent(query)}`);
 }
 
 /* ============================================================
