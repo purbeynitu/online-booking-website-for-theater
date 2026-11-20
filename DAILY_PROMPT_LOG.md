@@ -233,3 +233,14 @@
     - Added automated URL parameter listener on mount for eSewa V2 redirect (`?data=...`), verifying transaction with backend, displaying confirmed ticket, and triggering confetti.
     - Added handling for payment failure and QR ticket verification lookup.
   - Verified production client bundle via `npm run client:build` (`dist/` built with zero errors).
+
+## 2026-11-20
+
+### Interaction 18
+- **Prompt**: `check if the qr payment isworking or not`
+- **Changes Applied**:
+  - Performed comprehensive diagnostic of the QR payment pipeline across database, backend server, and frontend client.
+  - Verified backend payment execution: Ran automated diagnostic test verifying `createPaymentOrder`, dynamic EMVCo QR string generation, seat hold reservation, and `confirmQrPayment` against live Supabase PostgreSQL database (all tests passed with 100% data integrity).
+  - Audited real-world banking status: Confirmed that real-money mobile banking app scans (NIC Asia, Nabil, Global IME, eSewa, Fonepay) cannot debit real money yet because the system uses development mock merchant credentials (`NP-GIRIJA-JANAKPUR-01`) without active NCHL commercial gateway contracts.
+  - Audited frontend UX: Identified that clicking the primary payment button initiates the `PENDING` booking and renders the QR code, but sandbox confirmation requires triggering "Simulate Bank Scan & Pay". On the live GitHub Pages site, an offline client-side simulation is used since the Node.js backend is hosted locally.
+  - Formulated actionable roadmap for production merchant onboarding with NCHL and auto-polling UX enhancements.
