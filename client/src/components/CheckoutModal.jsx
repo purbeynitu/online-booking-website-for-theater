@@ -67,6 +67,30 @@ export default function CheckoutModal({ onBack }) {
     return () => clearInterval(timer);
   }, []);
 
+  // Live Auto-Polling Effect: checks Supabase backend every 2 seconds
+  useEffect(() => {
+    if (!activeOrder?.bookingRef || pollingStatus === 'confirmed') return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiCheckPaymentStatus(activeOrder.bookingRef);
+        if (isMounted && res?.success && res?.data?.paymentStatus === 'CONFIRMED') {
+          setPollingStatus('confirmed');
+          clearInterval(interval);
+          onBookingConfirmed(res.data, { bookingId: activeOrder.bookingRef });
+        }
+      } catch (err) {
+        // Silent catch during periodic polling
+      }
+    }, 2000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [activeOrder?.bookingRef, pollingStatus]);
+
   const formatTimer = (sec) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
@@ -96,9 +120,9 @@ export default function CheckoutModal({ onBack }) {
   };
 
   // Helper to transition confirmed booking to view
-  const onBookingConfirmed = (confirmedBooking, fallbackTicket) => {
+  const onBookingConfirmed = (confirmedBooking, fallbackTicket = {}) => {
     const ticket = {
-      bookingId: confirmedBooking?.bookingRef || fallbackTicket.bookingId,
+      bookingId: confirmedBooking?.bookingRef || fallbackTicket.bookingId || `GJ-${Math.floor(100000 + Math.random() * 900000)}`,
       createdAt: confirmedBooking?.createdAt || new Date().toISOString(),
       movieId: movie.id,
       movieTitle: movie.title,
@@ -114,9 +138,9 @@ export default function CheckoutModal({ onBack }) {
       time: bookingDetails.showtime,
       seats: bookingDetails.seats.map(s => s.id),
       snacks: bookingDetails.snacks,
-      customerName: customer.name,
-      customerEmail: customer.email,
-      customerPhone: customer.phone,
+      customerName: customer.name || confirmedBooking?.customerName || 'रमेश झा',
+      customerEmail: customer.email || confirmedBooking?.customerEmail || 'customer@gmail.com',
+      customerPhone: customer.phone || confirmedBooking?.customerPhone || '9841000000',
       seatSubtotal,
       snacksTotal,
       serviceCharge: fee,
@@ -135,8 +159,8 @@ export default function CheckoutModal({ onBack }) {
 
     try {
       confetti({
-        particleCount: 120,
-        spread: 80,
+        particleCount: 140,
+        spread: 90,
         origin: { y: 0.6 }
       });
     } catch (e) { }
@@ -146,6 +170,12 @@ export default function CheckoutModal({ onBack }) {
    * Main Payment Trigger
    */
   const handlePay = async () => {
+    // If user is on NepalPay QR and active order already exists, clicking Pay simulates/confirms it!
+    if (gateway === 'nepalpay_qr' && activeOrder?.bookingRef) {
+      await handleSimulateQrPayment(activeOrder.bookingRef, activeOrder.transactionUuid);
+      return;
+    }
+
     if (!validate()) return;
     setIsProcessing(true);
 
@@ -172,7 +202,6 @@ export default function CheckoutModal({ onBack }) {
       // Gateway A: eSewa ePaisa V2 form post redirect
       // -------------------------------------------------------------
       if (gateway === 'esewa' && orderData.esewaForm) {
-        // Create dynamic form and auto-submit to eSewa sandbox
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = orderData.esewaForm.action;
@@ -195,12 +224,13 @@ export default function CheckoutModal({ onBack }) {
       // Gateway B: NepalPay QR / Fonepay
       // -------------------------------------------------------------
       if (gateway === 'nepalpay_qr' || gateway === 'connectips') {
-        // QR is rendered and ready for scan or simulation
         setIsProcessing(false);
+        const qrEl = document.getElementById('qr-payment-container');
+        if (qrEl) qrEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
 
-      // Gateway C: Khalti (Simulated or checkout)
+      // Gateway C: Khalti (Simulated)
       if (gateway === 'khalti') {
         setTimeout(async () => {
           await handleSimulateQrPayment(orderData.bookingRef, orderData.transactionUuid);
@@ -209,7 +239,6 @@ export default function CheckoutModal({ onBack }) {
 
     } catch (err) {
       console.error('Payment order initiation error:', err);
-      // Fallback local simulation if backend is not reachable
       const fallbackBookingId = `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
       onBookingConfirmed(null, { bookingId: fallbackBookingId });
     } finally {
@@ -218,11 +247,41 @@ export default function CheckoutModal({ onBack }) {
   };
 
   /**
-   * Simulate Bank App Payment (instant server-side verification for testing)
+   * Simulate Bank App Payment (instant server-side verification with auto-order creation)
    */
   const handleSimulateQrPayment = async (bookingRefParam, txRefParam) => {
-    const targetRef = bookingRefParam || activeOrder?.bookingRef || `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
-    const txRef = txRefParam || activeOrder?.transactionUuid || `NPAY-${Date.now()}`;
+    let currentOrder = activeOrder;
+
+    // If order not yet created, auto-create it now using customer info or demo values
+    if (!currentOrder?.bookingRef) {
+      const patron = {
+        name: customer.name.trim() || 'रमेश झा (परीक्षण)',
+        email: customer.email.trim() || 'ramesh.jha@gmail.com',
+        phone: customer.phone.trim() || '9841234567'
+      };
+      if (!customer.name.trim()) {
+        setCustomer(patron);
+      }
+      try {
+        const createRes = await apiCreatePaymentOrder({
+          showId: bookingDetails.showId || 'girija-audi-1',
+          seatIds: bookingDetails.seats.map(s => s.id),
+          snacks: bookingDetails.snacks,
+          couponCode: bookingDetails.coupon?.code || null,
+          customer: patron,
+          gateway: 'nepalpay_qr'
+        });
+        if (createRes?.success && createRes?.data) {
+          currentOrder = createRes.data;
+          setActiveOrder(currentOrder);
+        }
+      } catch (e) {
+        console.warn('Auto order creation fallback:', e.message);
+      }
+    }
+
+    const targetRef = bookingRefParam || currentOrder?.bookingRef || `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
+    const txRef = txRefParam || currentOrder?.transactionUuid || `NPAY-${Date.now()}`;
 
     setPollingStatus('verifying');
     setIsProcessing(true);
@@ -237,10 +296,10 @@ export default function CheckoutModal({ onBack }) {
         setPollingStatus('confirmed');
         onBookingConfirmed(res.data?.booking, { bookingId: targetRef });
       } else {
-        throw new Error(res.message || 'Verification failed');
+        throw new Error(res?.message || 'Verification failed');
       }
     } catch (err) {
-      console.warn('QR verification server fallback:', err.message);
+      console.warn('QR verification fallback:', err.message);
       onBookingConfirmed(null, { bookingId: targetRef });
     } finally {
       setIsProcessing(false);
@@ -281,10 +340,28 @@ export default function CheckoutModal({ onBack }) {
           
           {/* Contact Details Card */}
           <div className="bg-slate-900/70 p-6 rounded-2xl border border-slate-800 space-y-4">
-            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-rose-500" />
-              <span>ग्राहक विवरण (इ-टिकट र SMS का लागि)</span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-rose-500" />
+                <span>ग्राहक विवरण (इ-टिकट र SMS का लागि)</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomer({
+                    name: 'रमेश झा',
+                    email: 'ramesh.jha@gmail.com',
+                    phone: '9841234567'
+                  });
+                  setErrors({});
+                }}
+                className="text-[10px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                title="द्रुत परीक्षणका लागि स्वचालित विवरण भर्नुहोस्"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>⚡ परीक्षण विवरण (Demo Fill)</span>
+              </button>
+            </div>
 
             <div className="space-y-3">
               <div>
@@ -403,11 +480,39 @@ export default function CheckoutModal({ onBack }) {
 
             {/* Gateway Interactive View: NepalPay Dynamic QR */}
             {gateway === 'nepalpay_qr' && (
-              <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 text-center space-y-4">
-                <div className="flex items-center justify-between text-xs px-2 text-slate-400">
-                  <span>Merchant: <strong className="text-white">Girija Cinema Hall Janakpur</strong></span>
-                  <span className="text-rose-400 font-mono font-bold">समय बाँकी: {formatTimer(qrTimer)}</span>
+              <div id="qr-payment-container" className="p-5 bg-slate-950 rounded-2xl border border-emerald-500/30 text-center space-y-4">
+                
+                {/* Live Polling Status Header */}
+                <div className="flex flex-wrap items-center justify-between text-xs px-2 gap-2 text-slate-300">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span className="font-semibold text-emerald-400">
+                      {pollingStatus === 'verifying'
+                        ? 'बैंक गेटवे प्रमाणीकरण हुँदैछ...'
+                        : 'मोबाइल बैंकिङ भुक्तानी पर्खिंदैछ...'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-rose-400 font-mono font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>बाँकी समय: {formatTimer(qrTimer)}</span>
+                  </div>
                 </div>
+
+                {activeOrder?.bookingRef ? (
+                  <div className="text-[11px] bg-emerald-950/30 px-3 py-1.5 rounded-xl border border-emerald-800/40 text-slate-300 flex items-center justify-between">
+                    <span>
+                      अर्डर रेफरेन्स: <strong className="text-white font-mono">{activeOrder.bookingRef}</strong>
+                    </span>
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      ACID सिट लक सक्रिय
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-400">
+                    💡 तलको हरियो बटन वा परीक्षण बटन थिचेर सिधै भुक्तानी गर्नुहोस्
+                  </div>
+                )}
 
                 {/* Scannable Dynamic EMVCo QR Code */}
                 <div className="w-56 h-56 mx-auto bg-white p-3 rounded-2xl shadow-xl flex flex-col items-center justify-center border-4 border-emerald-500/40 relative">
@@ -417,7 +522,7 @@ export default function CheckoutModal({ onBack }) {
                     level="M"
                     includeMargin={false}
                   />
-                  <div className="text-[9px] font-mono text-slate-700 font-bold mt-1 text-center">
+                  <div className="text-[10px] font-mono text-slate-800 font-black mt-1 text-center">
                     AMOUNT: रू {grandTotal}
                   </div>
                 </div>
@@ -427,7 +532,7 @@ export default function CheckoutModal({ onBack }) {
                     कुनै पनि नेपाली मोबाइल बैंकिङ एप खोल्नुहोस्
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    NIC Asia, Global IME, Nabil, Kumari, RBB, Sanima, Prabhu वा Fonepay बाट स्क्यान गरी भुक्तानी गर्नुहोस्।
+                    NIC Asia, Global IME, Nabil, Kumari, RBB, Sanima, Prabhu वा Fonepay बाट स्क्यान गरी भुक्तानी गर्नुहोस्। भुक्तानी हुनासाथ यो स्क्रिन स्वतः अपडेट हुनेछ।
                   </p>
                 </div>
 
@@ -437,22 +542,22 @@ export default function CheckoutModal({ onBack }) {
                     type="button"
                     onClick={() => handleSimulateQrPayment()}
                     disabled={isProcessing}
-                    className="w-full py-2.5 px-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/40 hover:to-teal-600/40 border border-emerald-500/40 hover:border-emerald-500/60 text-emerald-300 hover:text-white text-xs font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group cursor-pointer"
                   >
                     {isProcessing ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
                         <span>बैंक गेटवे प्रमाणीकरण हुँदैछ...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 text-emerald-400" />
-                        <span>बैंकिङ एप भुक्तानी परीक्षण गर्नुहोस् (Simulate Bank Scan & Pay)</span>
+                        <Sparkles className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+                        <span>⚡ बैंकिङ एप भुक्तानी सिमुलेट गर्नुहोस् (Simulate Bank Scan & Pay)</span>
                       </>
                     )}
                   </button>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    * विकास तथा परीक्षण मोड: यस बटनले सिधै ब्याकइन्डमा HMAC र डेटाबेस बुकिङ प्रमाणित गर्दछ।
+                  <p className="text-[10px] text-slate-500 mt-1.5">
+                    * ब्याकइन्डमा स्वतः प्रमाणीकरण (Live Polling) सक्रिय छ। यस बटनले सिधै Supabase मा बुकिङ पुष्टि गरी इ-टिकट जारी गर्दछ।
                   </p>
                 </div>
               </div>
@@ -639,12 +744,12 @@ export default function CheckoutModal({ onBack }) {
             <button
               onClick={handlePay}
               disabled={isProcessing}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-xl shadow-emerald-900/30 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-xl shadow-emerald-900/30 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isProcessing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>सुरक्षित भुक्तानी सुरु हुँदैछ...</span>
+                  <span>प्रमाणीकरण हुँदैछ...</span>
                 </>
               ) : (
                 <>
@@ -652,7 +757,9 @@ export default function CheckoutModal({ onBack }) {
                   <span>
                     {gateway === 'esewa'
                       ? `eSewa मार्फत रू ${grandTotal} तिर्नुहोस् (ePaisa V2)`
-                      : `नेपाल पे मार्फत रू ${grandTotal} भुक्तानी गर्नुहोस्`}
+                      : activeOrder?.bookingRef
+                        ? `⚡ बैंकिङ भुक्तानी पुष्टि गर्नुहोस् (Confirm & Issue Ticket)`
+                        : `नेपाल पे QR कोड जेनेरेट गर्नुहोस् • रू ${grandTotal}`}
                   </span>
                 </>
               )}

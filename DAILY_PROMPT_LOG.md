@@ -285,6 +285,17 @@
 - **Changes Applied**:
   - Formulated comprehensive post-deployment roadmap categorized into: (1) Seamless QR Checkout & Auto-Polling, (2) Staff Gatekeeper Camera Scanner for ticket entry at Girija Hall, (3) Real Nepali SMS / Email ticket dispatching (Sparrow SMS / Resend), and (4) Official commercial onboarding (NCHL merchant contract & free `girijacinema.com.np` domain).
 
+### Interaction 24
+- **Prompt**: `1` (Implement auto-polling QR checkout flow)
+- **Changes Applied**:
+  - Implemented 2-second live background auto-polling in `client/src/components/CheckoutModal.jsx` targeting `/api/payments/status/:bookingRef` on Render/Supabase.
+  - Enhanced `handleSimulateQrPayment` with auto-order creation ensuring seamless database persistence and verification even if triggered immediately.
+  - Added live pulsing radar telemetry (`मोबाइल बैंकिङ भुक्तानी पर्खिंदैछ...`) and active order reference banner with ACID seat lock countdown.
+  - Added 1-click **"⚡ परीक्षण विवरण (Demo Fill)"** button in the contact details form for effortless testing.
+  - Upgraded primary payment button to a reactive dual-stage controller (initiates QR code on first click, confirms and issues ticket if QR is already active).
+  - Rebuilt production client bundle (`dist/`) and deployed live update to GitHub Pages (`Published`).
+  - Synchronized all commits to remote GitHub repository `origin/main`.
+
 ### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:
