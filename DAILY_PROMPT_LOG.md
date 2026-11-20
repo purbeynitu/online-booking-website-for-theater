@@ -244,3 +244,19 @@
   - Audited real-world banking status: Confirmed that real-money mobile banking app scans (NIC Asia, Nabil, Global IME, eSewa, Fonepay) cannot debit real money yet because the system uses development mock merchant credentials (`NP-GIRIJA-JANAKPUR-01`) without active NCHL commercial gateway contracts.
   - Audited frontend UX: Identified that clicking the primary payment button initiates the `PENDING` booking and renders the QR code, but sandbox confirmation requires triggering "Simulate Bank Scan & Pay". On the live GitHub Pages site, an offline client-side simulation is used since the Node.js backend is hosted locally.
   - Formulated actionable roadmap for production merchant onboarding with NCHL and auto-polling UX enhancements.
+
+### Interaction 19
+- **Prompt**: `check if the frontend and backend is connected or not`
+- **Changes Applied**:
+  - Conducted end-to-end diagnostic of frontend-to-backend connectivity across database, API routes, Vite dev server, and client UI.
+  - Tested backend database connectivity: Verified Prisma Client successfully connects to PostgreSQL on Supabase (queried live movie catalog and health metrics).
+  - Started and validated backend server on `http://localhost:5000`:
+    - `GET /health` returned `HEALTHY` (Status 200 OK).
+    - `GET /api/movies` returned all movies from Supabase (*Pushpa 2*, *12 Gaun*, *Purna Bahadur Ko Sarangi*).
+    - `GET /api/admin/health` returned database status `ONLINE`.
+  - Started and verified frontend client on `http://localhost:5173`:
+    - Verified Vite dev proxy `/api` forwards smoothly to `http://localhost:5000`.
+    - Performed visual browser verification via browser subagent: Confirmed header shows `🟢 Supabase Backend Connected` live pulse indicator.
+    - Confirmed movies fetched from Supabase database render accurately on the homepage.
+  - Documented running instructions: When running both `npm run server:dev` (port 5000) and `npm run client:dev` (port 5173), frontend and backend are fully connected. Clarified that if the backend is stopped or on static GitHub Pages hosting, the frontend gracefully falls back to `Local Standalone Mode`.
+
