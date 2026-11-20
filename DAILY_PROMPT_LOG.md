@@ -263,6 +263,13 @@
   - Deployed updated frontend to live GitHub Pages via `npm run deploy` (`Published`).
   - Pushed all deployment manifests and configurations to remote GitHub repository `origin/main`.
 
+### Interaction 21
+- **Prompt**: `this how to fill up` (Screenshot of Render Environment Variables configuration panel)
+- **Changes Applied**:
+  - Provided 1-click bulk paste instructions using the `Add from .env` button on Render.
+  - Provided exact table of Key-Value environment variables for Supabase database pooling, JWT authorization, CORS origins, and NepalPay/eSewa merchant settings.
+  - Instructed user on clicking `Deploy web service` to initiate live cloud build and obtain public API URL.
+
 ### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:
