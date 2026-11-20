@@ -41,7 +41,25 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Health check
+// Health check & Root greeting
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ONLINE',
+    service: 'Girija Cinema Hall Backend API',
+    venue: 'Girija Cinema Hall, Janakpurdham, Dhanusha, Nepal',
+    endpoints: {
+      health: '/health',
+      movies: '/api/movies',
+      shows: '/api/shows',
+      bookings: '/api/bookings',
+      payments: '/api/payments',
+      admin: '/api/admin'
+    },
+    database: 'PostgreSQL (Supabase)',
+    paymentGateway: 'NepalPay QR & eSewa ePaisa V2'
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'HEALTHY',

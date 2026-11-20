@@ -270,6 +270,16 @@
   - Provided exact table of Key-Value environment variables for Supabase database pooling, JWT authorization, CORS origins, and NepalPay/eSewa merchant settings.
   - Instructed user on clicking `Deploy web service` to initiate live cloud build and obtain public API URL.
 
+### Interaction 22
+- **Prompt**: `https://girija-cinema-api.onrender.com this guves error` (Screenshot showing `Cannot GET /`)
+- **Changes Applied**:
+  - Diagnosed `Cannot GET /`: Confirmed that this is Express.js's standard response when no route is mapped to `/`, proving that the backend is 100% active and healthy on Render.
+  - Tested public API endpoints: Verified `https://girija-cinema-api.onrender.com/health` (HEALTHY) and `/api/movies` (returning live catalog from Supabase PostgreSQL).
+  - Added root greeting route (`GET /`) to `server/src/index.js` displaying venue information, endpoint directory, and database status.
+  - Configured `client/.env.production` and updated `client/src/services/api.js` to point directly to `https://girija-cinema-api.onrender.com`.
+  - Rebuilt client bundle and deployed live to GitHub Pages (`Published`).
+  - Synchronized repository changes to GitHub remote `origin/main`.
+
 ### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:

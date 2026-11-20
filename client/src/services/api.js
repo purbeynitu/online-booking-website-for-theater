@@ -20,7 +20,7 @@ const getApiBase = () => {
       return customApi.replace(/\/$/, '');
     }
   }
-  return '';
+  return 'https://girija-cinema-api.onrender.com';
 };
 
 export const API_BASE = getApiBase();
