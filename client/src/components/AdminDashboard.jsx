@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, Trash2, Film, DollarSign, Ticket, Building2, Lock, ArrowLeft, QrCode, Database, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Film, DollarSign, Ticket, Building2, Lock, ArrowLeft, QrCode, Database, CheckCircle2, Camera, DoorOpen } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 import { apiAdminLogin, apiGetAdminStats } from '../services/api';
+import GatekeeperScanner from './GatekeeperScanner';
 
 export default function AdminDashboard() {
   const {
@@ -279,7 +280,19 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+      <div className="flex items-center gap-3 border-b border-slate-800 pb-3 flex-wrap">
+        <button
+          onClick={() => setActiveTab('scanner')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'scanner'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-950/40'
+              : 'text-rose-400 hover:text-white bg-rose-500/10 border border-rose-500/20'
+          }`}
+        >
+          <Camera className="w-3.5 h-3.5" />
+          <span>प्रवेश द्वार स्क्यानर (Gatekeeper Scanner)</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('overview')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -313,6 +326,11 @@ export default function AdminDashboard() {
           NepalPay Gateway Config
         </button>
       </div>
+
+      {/* Tab: Gatekeeper Scanner */}
+      {activeTab === 'scanner' && (
+        <GatekeeperScanner />
+      )}
 
       {/* Tab: Transactions */}
       {activeTab === 'overview' && (

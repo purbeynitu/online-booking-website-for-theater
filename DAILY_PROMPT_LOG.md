@@ -309,6 +309,17 @@
 - **Changes Applied**:
   - Outlined prioritized next milestones for Girija Cinema Hall: (1) Staff Gatekeeper Camera QR Scanner in `/admin` for gate check-in, (2) Automated Admin Telegram / Email alerts on ticket booking, (3) Step-by-step merchant registration guide for live bank QR and eSewa, and (4) Free `.com.np` domain registration.
 
+### Interaction 27
+- **Prompt**: `staff gatekepper do it`
+- **Changes Applied**:
+  - Implemented `client/src/components/GatekeeperScanner.jsx`: Live camera QR scanning portal with camera flip, laser viewfinder, manual code/phone lookup, audio cues, and instant door admission decision interface (Approved vs Already Used vs Unpaid).
+  - Implemented backend verification and admission routes in `server/src/routes/bookings.js` (`GET /api/bookings/verify-ticket` and `POST /api/bookings/check-in`) with duplicate entry prevention.
+  - Added `apiVerifyTicket` and `apiCheckInTicket` to `client/src/services/api.js`.
+  - Integrated Gatekeeper Scanner into `AdminDashboard.jsx` tab navigation and added direct **"गेट स्क्यानर (Gate)"** navbar button in `Navbar.jsx` and `App.jsx`.
+  - Rebuilt production client distribution via `npm run client:build` (`dist/` generated with zero errors).
+  - Deployed updated website live to GitHub Pages (`Published`).
+  - Committed and pushed all source code and endpoints to GitHub remote `origin/main`.
+
 ### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:

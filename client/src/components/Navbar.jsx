@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Film, MapPin, Search, Ticket, ShieldCheck, Menu, X, Phone, QrCode } from 'lucide-react';
+import { Film, MapPin, Search, Ticket, ShieldCheck, Menu, X, Phone, QrCode, DoorOpen } from 'lucide-react';
 import { useBooking } from '../context/BookingContext';
 
 export default function Navbar() {
@@ -126,6 +126,18 @@ export default function Navbar() {
             </button>
 
             <button
+              onClick={() => handleNav('gatekeeper')}
+              className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all border ${
+                currentView === 'gatekeeper'
+                  ? 'border-emerald-500/80 bg-emerald-500/10 text-emerald-400'
+                  : 'border-slate-800 bg-slate-900/50 text-slate-400 hover:text-emerald-400 hover:border-slate-700'
+              }`}
+            >
+              <DoorOpen className="w-4 h-4 text-emerald-400" />
+              <span>गेट स्क्यानर (Gate)</span>
+            </button>
+
+            <button
               onClick={() => handleNav('admin')}
               className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all border ${
                 currentView === 'admin'
@@ -184,6 +196,13 @@ export default function Navbar() {
                     {bookings.length}
                   </span>
                 )}
+              </button>
+              <button
+                onClick={() => handleNav('gatekeeper')}
+                className="text-left px-3 py-2 rounded-md text-sm font-medium text-emerald-400 hover:bg-slate-900 flex items-center gap-2"
+              >
+                <DoorOpen className="w-4 h-4 text-emerald-400" />
+                गेटवेरीफायर (Gatekeeper QR Scanner)
               </button>
               <button
                 onClick={() => handleNav('admin')}

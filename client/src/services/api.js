@@ -220,6 +220,17 @@ export async function apiLookupBookings(query = '') {
   return await request(`/api/bookings/lookup?query=${encodeURIComponent(query)}`);
 }
 
+export async function apiVerifyTicket(query) {
+  return await request(`/api/bookings/verify-ticket?query=${encodeURIComponent(query)}`);
+}
+
+export async function apiCheckInTicket(bookingRef, staffName = 'Girija Gatekeeper') {
+  return await request('/api/bookings/check-in', {
+    method: 'POST',
+    body: JSON.stringify({ bookingRef, staffName })
+  });
+}
+
 /* ============================================================
    ADMIN API
    ============================================================ */

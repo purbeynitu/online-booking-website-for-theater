@@ -11,6 +11,7 @@ import CheckoutModal from './components/CheckoutModal';
 import TicketSuccess from './components/TicketSuccess';
 import FindTicket from './components/FindTicket';
 import AdminDashboard from './components/AdminDashboard';
+import GatekeeperScanner from './components/GatekeeperScanner';
 import Footer from './components/Footer';
 import { apiVerifyEsewaPayment } from './services/api';
 import confetti from 'canvas-confetti';
@@ -212,6 +213,13 @@ export default function App() {
 
       case 'admin':
         return <AdminDashboard />;
+
+      case 'gatekeeper':
+        return (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <GatekeeperScanner onBack={() => setCurrentView('home')} />
+          </div>
+        );
 
       default:
         return (
