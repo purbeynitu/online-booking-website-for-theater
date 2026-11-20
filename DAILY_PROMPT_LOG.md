@@ -246,6 +246,12 @@
   - Formulated actionable roadmap for production merchant onboarding with NCHL and auto-polling UX enhancements.
 
 ### Interaction 19
+- **Prompt**: `what should i do next`
+- **Changes Applied**:
+  - Evaluated current project state across cloud architecture, payment gateways, live deployment, and operational workflows.
+  - Formulated a 4-path roadmap covering: (1) Free Cloud Backend Deployment (Render/Railway), (2) Seamless QR Payment UX & Auto-polling, (3) Real Merchant Gateway Credentials Onboarding (NCHL/eSewa), and (4) Staff Gatekeeper QR Scanner for entry ticket verification.
+
+### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:
   - Conducted end-to-end diagnostic of frontend-to-backend connectivity across database, API routes, Vite dev server, and client UI.
