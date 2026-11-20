@@ -251,6 +251,18 @@
   - Evaluated current project state across cloud architecture, payment gateways, live deployment, and operational workflows.
   - Formulated a 4-path roadmap covering: (1) Free Cloud Backend Deployment (Render/Railway), (2) Seamless QR Payment UX & Auto-polling, (3) Real Merchant Gateway Credentials Onboarding (NCHL/eSewa), and (4) Staff Gatekeeper QR Scanner for entry ticket verification.
 
+### Interaction 20
+- **Prompt**: `deploy backend`
+- **Changes Applied**:
+  - Created `render.yaml` Infrastructure-as-Code blueprint for automated, 1-click backend deployment to Render Web Services in the Singapore region (`ap-southeast-1` to match Supabase).
+  - Created `server/Dockerfile` and `server/.dockerignore` for containerized deployment across Railway, Fly.io, and Koyeb.
+  - Added `"build": "prisma generate"` script to `server/package.json` for cloud build lifecycle compatibility.
+  - Updated `client/src/services/api.js` to support dynamic runtime backend connections via `localStorage.getItem('girija_custom_api_url')` alongside `VITE_API_URL`.
+  - Created comprehensive step-by-step cloud setup and configuration guide in `DEPLOY_BACKEND.md`.
+  - Rebuilt production client distribution via `npm run client:build` (`dist/` generated with zero errors).
+  - Deployed updated frontend to live GitHub Pages via `npm run deploy` (`Published`).
+  - Pushed all deployment manifests and configurations to remote GitHub repository `origin/main`.
+
 ### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:

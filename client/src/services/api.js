@@ -15,6 +15,10 @@ const getApiBase = () => {
     if (isLocal) {
       return 'http://localhost:5000';
     }
+    const customApi = localStorage.getItem('girija_custom_api_url');
+    if (customApi) {
+      return customApi.replace(/\/$/, '');
+    }
   }
   return '';
 };
