@@ -320,6 +320,15 @@
   - Deployed updated website live to GitHub Pages (`Published`).
   - Committed and pushed all source code and endpoints to GitHub remote `origin/main`.
 
+### Interaction 28
+- **Prompt**: `so do now i have it's own link ofwebsite? mot local host`
+- **Changes Applied**:
+  - Confirmed live, publicly accessible internet deployment architecture:
+    1. Public Website: `https://purbeynitu.github.io/online-booking-website-for-theater/`
+    2. Cloud Backend: `https://girija-cinema-api.onrender.com`
+    3. Cloud Database: PostgreSQL on Supabase (AWS Singapore)
+  - Clarified that zero localhost processes are required; any smartphone or desktop in the world can access the ticket booking, live QR payments, gatekeeper scanner, and admin console 24/7.
+
 ### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:
