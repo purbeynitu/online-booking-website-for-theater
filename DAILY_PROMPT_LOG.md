@@ -304,6 +304,11 @@
     2. **Software System Level**: Admin Dashboard (`/admin`) live revenue ledger, transaction reference mapping (`paymentRef`), and gatekeeper ticket cross-referencing.
   - Documented optional automated alert integrations (instant admin email / Telegram alert on ticket confirmation).
 
+### Interaction 26
+- **Prompt**: `ok next what should i do?`
+- **Changes Applied**:
+  - Outlined prioritized next milestones for Girija Cinema Hall: (1) Staff Gatekeeper Camera QR Scanner in `/admin` for gate check-in, (2) Automated Admin Telegram / Email alerts on ticket booking, (3) Step-by-step merchant registration guide for live bank QR and eSewa, and (4) Free `.com.np` domain registration.
+
 ### Interaction 19
 - **Prompt**: `check if the frontend and backend is connected or not`
 - **Changes Applied**:
