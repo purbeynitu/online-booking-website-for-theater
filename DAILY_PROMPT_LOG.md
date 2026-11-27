@@ -344,3 +344,19 @@
     - Confirmed movies fetched from Supabase database render accurately on the homepage.
   - Documented running instructions: When running both `npm run server:dev` (port 5000) and `npm run client:dev` (port 5173), frontend and backend are fully connected. Clarified that if the backend is stopped or on static GitHub Pages hosting, the frontend gracefully falls back to `Local Standalone Mode`.
 
+## 2026-11-27
+
+### Interaction 29
+- **Prompt**: `it's qr is changing all the time and qr is leading to the website of girija hall. fix this`
+- **Changes Applied**:
+  - Diagnosed root causes: (1) `qrTimer` state update executed every 1000ms, causing `Date.now()` in render-time fallback string to recompute every second and continuously mutate/flicker the QR code; (2) scanning the raw EMVCo payload string with standard phone cameras or Google Lens caused mobile devices to perform an entity search for "Girija Cinema Hall Janakpur" and open the generic homepage instead of opening a payment workflow.
+  - Stabilized QR generation in `client/src/components/CheckoutModal.jsx` using stable session reference IDs (`sessionBookingRef` and `sessionTxRef`) initialized once via `useState`, preventing QR matrix mutation or flickering on timer decrements.
+  - Implemented dual QR viewing modes with tab selector in `client/src/components/CheckoutModal.jsx`:
+    1. `📱 मोबाइल क्यामेरा (Scan & Pay)` [Default]: Encodes universal URL (`?pay_order=GJ-XXXXXX&amount=XXX`) scannable by any mobile camera or Google Lens that opens directly into a dedicated mobile payment sheet.
+    2. `🏦 बैंक एप (NepalPay EMVCo)`: Encodes static, stable NepalPay EMVCo QR code compliant with NCHL standards for native mobile banking apps (NIC Asia, Global IME, Nabil, Kumari, Fonepay).
+  - Created `client/src/components/MobilePaymentModal.jsx`: Mobile-first payment confirmation modal triggered when a URL has `?pay_order=...` or `?pay=...`. Loads booking details, displays movie/showtime/seats/amount, supports 1-tap payment confirmation with confetti celebration and backend verification via `apiVerifyQrPayment`.
+  - Integrated `MobilePaymentModal` into `client/src/App.jsx` with automatic query parameter detection on mount, smooth transition to confirmed ticket view, and synchronized auto-polling pickup for desktop checkouts.
+  - Rebuilt production client bundle with `npm run client:build` (exit code 0, 0 errors).
+  - Deployed updated web application live to GitHub Pages via `npx gh-pages -d client/dist` (`Published`).
+  - Committed and pushed all changes to GitHub repository remote `origin/main`.
+

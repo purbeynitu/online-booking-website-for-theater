@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   QrCode,
   Smartphone,
@@ -52,12 +52,18 @@ export default function CheckoutModal({ onBack }) {
   const [qrTimer, setQrTimer] = useState(480); // 8 minutes matching seat hold
   const [activeOrder, setActiveOrder] = useState(null);
   const [pollingStatus, setPollingStatus] = useState('waiting'); // 'waiting' | 'verifying' | 'confirmed'
+  const [sessionBookingRef] = useState(() => `GJ-${Math.floor(100000 + Math.random() * 900000)}`);
+  const [sessionTxRef] = useState(() => `NP-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [qrMode, setQrMode] = useState('mobile_pay'); // 'mobile_pay' (universal URL) | 'emvco' (bank app)
 
   const movie = bookingDetails.movie;
   const seatSubtotal = calculateSeatSubtotal();
   const snacksTotal = calculateSnacksTotal();
   const fee = calculateServiceCharge();
   const grandTotal = calculateGrandTotal();
+
+  const activeBookingRef = activeOrder?.bookingRef || sessionBookingRef;
+  const activeTxRef = activeOrder?.transactionUuid || sessionTxRef;
 
   // 8 minute countdown timer
   useEffect(() => {
@@ -67,29 +73,29 @@ export default function CheckoutModal({ onBack }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Live Auto-Polling Effect: checks Supabase backend every 2 seconds
+  // Live Auto-Polling Effect: checks Supabase backend every 2.5 seconds
   useEffect(() => {
-    if (!activeOrder?.bookingRef || pollingStatus === 'confirmed') return;
+    if (!activeBookingRef || pollingStatus === 'confirmed') return;
 
     let isMounted = true;
     const interval = setInterval(async () => {
       try {
-        const res = await apiCheckPaymentStatus(activeOrder.bookingRef);
+        const res = await apiCheckPaymentStatus(activeBookingRef);
         if (isMounted && res?.success && res?.data?.paymentStatus === 'CONFIRMED') {
           setPollingStatus('confirmed');
           clearInterval(interval);
-          onBookingConfirmed(res.data, { bookingId: activeOrder.bookingRef });
+          onBookingConfirmed(res.data, { bookingId: activeBookingRef });
         }
       } catch (err) {
         // Silent catch during periodic polling
       }
-    }, 2000);
+    }, 2500);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [activeOrder?.bookingRef, pollingStatus]);
+  }, [activeBookingRef, pollingStatus]);
 
   const formatTimer = (sec) => {
     const m = Math.floor(sec / 60);
@@ -280,8 +286,8 @@ export default function CheckoutModal({ onBack }) {
       }
     }
 
-    const targetRef = bookingRefParam || currentOrder?.bookingRef || `GJ-${Math.floor(100000 + Math.random() * 900000)}`;
-    const txRef = txRefParam || currentOrder?.transactionUuid || `NPAY-${Date.now()}`;
+    const targetRef = bookingRefParam || currentOrder?.bookingRef || activeBookingRef;
+    const txRef = txRefParam || currentOrder?.transactionUuid || activeTxRef;
 
     setPollingStatus('verifying');
     setIsProcessing(true);
@@ -306,9 +312,21 @@ export default function CheckoutModal({ onBack }) {
     }
   };
 
-  // Dynamic QR Payload (from backend order or live generated fallback)
-  const qrDisplayValue = activeOrder?.qrData?.qrPayload ||
-    `00020101021226580010com.nepalpay0124NP-GIRIJA-JANAKPUR-01520478325303524540${grandTotal.toFixed(2)}5802NP5926Girija Cinema Hall Janakpur6012Janakpurdham62240112GJ-${Date.now().toString().slice(-6)}0208NP-${Date.now().toString().slice(-4)}6304`;
+  // Universal Mobile Scan & Pay link: scannable by ANY camera/Lens, opens dedicated mobile pay page
+  const mobilePayUrl = useMemo(() => {
+    const origin = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : 'https://purbeynitu.github.io/online-booking-website-for-theater/';
+    return `${origin}?pay_order=${encodeURIComponent(activeBookingRef)}&amount=${encodeURIComponent(grandTotal)}`;
+  }, [activeBookingRef, grandTotal]);
+
+  // Standard NepalPay EMVCo Payload: stable static format for banking apps (no Date.now jitter)
+  const emvcoPayload = useMemo(() => {
+    if (activeOrder?.qrData?.qrPayload) return activeOrder.qrData.qrPayload;
+    return `00020101021226580010com.nepalpay0124NP-GIRIJA-JANAKPUR-01520478325303524540${grandTotal.toFixed(2)}5802NP5926Girija Cinema Hall Janakpur6012Janakpurdham62240112${activeBookingRef}0208${activeTxRef}6304`;
+  }, [activeOrder?.qrData?.qrPayload, grandTotal, activeBookingRef, activeTxRef]);
+
+  const qrDisplayValue = qrMode === 'mobile_pay' ? mobilePayUrl : emvcoPayload;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
@@ -498,27 +516,49 @@ export default function CheckoutModal({ onBack }) {
                   </div>
                 </div>
 
-                {activeOrder?.bookingRef ? (
-                  <div className="text-[11px] bg-emerald-950/30 px-3 py-1.5 rounded-xl border border-emerald-800/40 text-slate-300 flex items-center justify-between">
-                    <span>
-                      अर्डर रेफरेन्स: <strong className="text-white font-mono">{activeOrder.bookingRef}</strong>
-                    </span>
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                      <Lock className="w-3 h-3" />
-                      ACID सिट लक सक्रिय
-                    </span>
-                  </div>
-                ) : (
-                  <div className="text-[11px] bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-400">
-                    💡 तलको हरियो बटन वा परीक्षण बटन थिचेर सिधै भुक्तानी गर्नुहोस्
-                  </div>
-                )}
+                <div className="text-[11px] bg-emerald-950/30 px-3 py-1.5 rounded-xl border border-emerald-800/40 text-slate-300 flex items-center justify-between">
+                  <span>
+                    अर्डर रेफरेन्स: <strong className="text-white font-mono">{activeBookingRef}</strong>
+                  </span>
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    ACID सिट लक सक्रिय
+                  </span>
+                </div>
 
-                {/* Scannable Dynamic EMVCo QR Code */}
-                <div className="w-56 h-56 mx-auto bg-white p-3 rounded-2xl shadow-xl flex flex-col items-center justify-center border-4 border-emerald-500/40 relative">
+                {/* QR Code Mode Toggle Tabs */}
+                <div className="flex bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-semibold gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setQrMode('mobile_pay')}
+                    className={`flex-1 py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      qrMode === 'mobile_pay'
+                        ? 'bg-emerald-600 text-white shadow-md font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-white" />
+                    <span>📱 मोबाइल क्यामेरा (Scan & Pay)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrMode('emvco')}
+                    className={`flex-1 py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      qrMode === 'emvco'
+                        ? 'bg-emerald-600 text-white shadow-md font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-white" />
+                    <span>🏦 बैंक एप (NepalPay EMVCo)</span>
+                  </button>
+                </div>
+
+                {/* Scannable Dynamic QR Code */}
+                <div className="w-60 h-60 mx-auto bg-white p-3 rounded-2xl shadow-xl flex flex-col items-center justify-center border-4 border-emerald-500/40 relative">
                   <QRCodeSVG
                     value={qrDisplayValue}
-                    size={170}
+                    size={180}
                     level="M"
                     includeMargin={false}
                   />
@@ -527,14 +567,27 @@ export default function CheckoutModal({ onBack }) {
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
-                  <p className="font-semibold text-emerald-400">
-                    कुनै पनि नेपाली मोबाइल बैंकिङ एप खोल्नुहोस्
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    NIC Asia, Global IME, Nabil, Kumari, RBB, Sanima, Prabhu वा Fonepay बाट स्क्यान गरी भुक्तानी गर्नुहोस्। भुक्तानी हुनासाथ यो स्क्रिन स्वतः अपडेट हुनेछ।
-                  </p>
-                </div>
+                {qrMode === 'mobile_pay' ? (
+                  <div className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto space-y-1">
+                    <p className="font-semibold text-emerald-400 flex items-center justify-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>कुनै पनि स्मार्टफोनको क्यामेरा वा Google Lens ले स्क्यान गर्नुहोस्</span>
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      क्यामेराले स्क्यान गर्दा सिधै यो अर्डरको मोबाइल पेमेन्ट पाना खुल्छ। मोबाइलबाट भुक्तानी हुनासाथ यो स्क्रिनमा टिकट स्वतः जारी हुनेछ।
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto space-y-1">
+                    <p className="font-semibold text-emerald-400 flex items-center justify-center gap-1">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>कुनै पनि नेपाली मोबाइल बैंकिङ एप खोल्नुहोस्</span>
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      NIC Asia, Global IME, Nabil, Kumari, RBB, Sanima, Prabhu वा Fonepay बाट स्क्यान गरी भुक्तानी गर्नुहोस्। भुक्तानी हुनासाथ यो स्क्रिन स्वतः अपडेट हुनेछ।
+                    </p>
+                  </div>
+                )}
 
                 {/* Sandbox / Evaluation Live Verification Helper */}
                 <div className="pt-2 border-t border-slate-800/80">

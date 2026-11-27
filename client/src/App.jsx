@@ -12,6 +12,7 @@ import TicketSuccess from './components/TicketSuccess';
 import FindTicket from './components/FindTicket';
 import AdminDashboard from './components/AdminDashboard';
 import GatekeeperScanner from './components/GatekeeperScanner';
+import MobilePaymentModal from './components/MobilePaymentModal';
 import Footer from './components/Footer';
 import { apiVerifyEsewaPayment } from './services/api';
 import confetti from 'canvas-confetti';
@@ -30,6 +31,7 @@ export default function App() {
   const [bookingStep, setBookingStep] = useState(1); // 1: showtime, 2: seats, 3: snacks, 4: checkout
   const [isVerifyingEsewa, setIsVerifyingEsewa] = useState(false);
   const [esewaMessage, setEsewaMessage] = useState(null);
+  const [mobilePayOrder, setMobilePayOrder] = useState(null);
 
   // Check URL query parameters for eSewa callback on mount
   useEffect(() => {
@@ -39,6 +41,8 @@ export default function App() {
     const esewaData = urlParams.get('data');
     const isEsewaFailed = urlParams.get('esewa_failed');
     const verifyTicketRef = urlParams.get('verifyTicket');
+    const payOrderRef = urlParams.get('pay_order') || urlParams.get('pay');
+    const payAmount = urlParams.get('amount');
 
     // Case 1: eSewa ePaisa V2 redirect with Base64 payload
     if (esewaData) {
@@ -119,6 +123,14 @@ export default function App() {
     // Case 3: Direct ticket verification lookup from QR code scan
     if (verifyTicketRef) {
       setCurrentView('find-ticket');
+    }
+
+    // Case 4: Mobile Scan & Pay direct link from QR scan (?pay_order=GJ-XXXXXX)
+    if (payOrderRef) {
+      setMobilePayOrder({
+        bookingRef: payOrderRef,
+        amount: payAmount ? Number(payAmount) : null
+      });
     }
   }, []);
 
@@ -256,6 +268,58 @@ export default function App() {
       <main className="flex-1">
         {renderContent()}
       </main>
+
+      {/* Direct Mobile Scan & Pay Modal */}
+      {mobilePayOrder && (
+        <MobilePaymentModal
+          bookingRef={mobilePayOrder.bookingRef}
+          initialAmount={mobilePayOrder.amount}
+          onSuccess={(confirmedBooking) => {
+            const confirmedTicket = {
+              bookingId: confirmedBooking?.bookingRef || mobilePayOrder.bookingRef,
+              createdAt: confirmedBooking?.createdAt || new Date().toISOString(),
+              movieId: confirmedBooking?.show?.movieId || 'mov-purna-bahadur',
+              movieTitle: confirmedBooking?.show?.movie?.title || 'Girija Cinema Feature',
+              nepaliTitle: confirmedBooking?.show?.movie?.nepaliTitle || 'गिरिजा सिनेमा चलचित्र',
+              moviePoster: confirmedBooking?.show?.movie?.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600&auto=format&fit=crop',
+              theatreName: hallInfo?.name || 'Girija Cinema Hall',
+              nepaliTheatreName: hallInfo?.nepaliName || 'गिरिजा सिनेमा हल',
+              address: hallInfo?.address || 'Station Road, Janakpurdham',
+              phone: hallInfo?.phone || '+977 41-520123',
+              screen: confirmedBooking?.show?.screen?.name || 'Audi 1: Main Hall (Dolby Atmos 7.1)',
+              format: '2D Digital',
+              date: confirmedBooking?.show?.date || new Date().toISOString().split('T')[0],
+              time: confirmedBooking?.show?.startTime || '05:45 PM',
+              seats: Array.isArray(confirmedBooking?.seats) ? confirmedBooking.seats : ['A1', 'A2'],
+              snacks: confirmedBooking?.snacks || [],
+              customerName: confirmedBooking?.customerName || 'मोबाइल भुक्तानी ग्राहक',
+              customerEmail: confirmedBooking?.customerEmail || 'customer@gmail.com',
+              customerPhone: confirmedBooking?.customerPhone || '9841000000',
+              seatSubtotal: confirmedBooking?.seatSubtotal || mobilePayOrder.amount || 320,
+              snacksTotal: confirmedBooking?.snacksTotal || 0,
+              serviceCharge: confirmedBooking?.serviceCharge || 20,
+              discount: confirmedBooking?.discountAmount || 0,
+              totalAmount: confirmedBooking?.totalAmount || mobilePayOrder.amount || 320,
+              currency: 'रू (NPR)',
+              gateway: 'NepalPay Mobile Scan',
+              nepalPayTxId: confirmedBooking?.nepalPayTxId || `NPAY-${Date.now()}`,
+              paymentRef: confirmedBooking?.paymentRef || `NCHL-${Math.floor(100000 + Math.random() * 900000)}`,
+              status: 'CONFIRMED'
+            };
+
+            setBookings((prev) => [confirmedTicket, ...prev]);
+            setCompletedTicket(confirmedTicket);
+            setMobilePayOrder(null);
+            setCurrentView('ticket-success');
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }}
+          onClose={() => {
+            setMobilePayOrder(null);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }}
+        />
+      )}
+
       <Footer />
     </div>
   );
