@@ -26,6 +26,38 @@ export default function AdminDashboard() {
   const [adminPass, setAdminPass] = useState('');
   const [loginError, setLoginError] = useState('');
   const [serverStats, setServerStats] = useState(null);
+  const [customQr, setCustomQr] = useState(() => localStorage.getItem('girija_custom_qr_image') || '');
+  const [customQrUrl, setCustomQrUrl] = useState('');
+  const [qrSaveMessage, setQrSaveMessage] = useState('');
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCustomQr(reader.result);
+        localStorage.setItem('girija_custom_qr_image', reader.result);
+        setQrSaveMessage('QR स्ट्यान्डी तस्बिर सफलतापूर्वक सुरक्षित गरियो!');
+        setTimeout(() => setQrSaveMessage(''), 4000);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveQrUrl = () => {
+    if (!customQrUrl.trim()) return;
+    setCustomQr(customQrUrl.trim());
+    localStorage.setItem('girija_custom_qr_image', customQrUrl.trim());
+    setQrSaveMessage('QR स्ट्यान्डी लिङ्क सुरक्षित गरियो!');
+    setTimeout(() => setQrSaveMessage(''), 4000);
+  };
+
+  const handleRemoveCustomQr = () => {
+    setCustomQr('');
+    localStorage.removeItem('girija_custom_qr_image');
+    setQrSaveMessage('पूर्वनिर्धारित Fonepay स्ट्यान्डीमा पुनःस्थापित गरियो।');
+    setTimeout(() => setQrSaveMessage(''), 4000);
+  };
 
   // Fetch live stats from backend
   useEffect(() => {
@@ -468,6 +500,93 @@ export default function AdminDashboard() {
               <span className="text-slate-400 block uppercase font-bold text-[10px]">Supported Mobile Banking Apps</span>
               <span className="text-white font-medium">NIC Asia, Global IME, Nabil, Kumari, RBB, Nepal Bank, Prabhu, Sanima</span>
               <span className="text-emerald-400 block text-[11px]">✓ Any NepalPay QR compliant app</span>
+            </div>
+          </div>
+
+          {/* Custom Fonepay Standee Uploader */}
+          <div className="p-5 bg-slate-950 rounded-2xl border border-emerald-500/30 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 className="font-extrabold text-white text-sm flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-emerald-400" />
+                  <span>हलको आधिकारिक Fonepay / eSewa Merchant QR स्ट्यान्डी तस्बिर</span>
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  तपाईंको बैंक वा eSewa बाट प्राप्त आधिकारिक Fonepay QR को फोटो यहाँ राख्नुहोस्, जसले गर्दा ग्राहकले eSewa एपबाट सिधै स्क्यान गर्न सकून्।
+                </p>
+              </div>
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-bold">
+                eSewa & Fonepay Live
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
+              {/* Preview */}
+              <div className="text-center space-y-2">
+                <div className="w-44 h-44 mx-auto bg-white rounded-2xl p-2 border-2 border-emerald-500/40 flex items-center justify-center overflow-hidden shadow-lg">
+                  {customQr ? (
+                    <img src={customQr} alt="Custom Fonepay QR" className="w-full h-full object-contain rounded-xl" />
+                  ) : (
+                    <div className="text-center p-3 text-slate-400 space-y-1">
+                      <QrCode className="w-10 h-10 mx-auto text-slate-400" />
+                      <div className="text-[10px] font-semibold text-slate-600">पूर्वनिर्धारित गिरिजा हल Fonepay QR सक्रिय छ</div>
+                    </div>
+                  )}
+                </div>
+                {customQr && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveCustomQr}
+                    className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                  >
+                    तस्बिर हटाउनुहोस् (Reset)
+                  </button>
+                )}
+              </div>
+
+              {/* Upload controls */}
+              <div className="md:col-span-2 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    १. कम्प्युटर वा मोबाइलबाट QR फोटो अपलोड गर्नुहोस् (File Upload):
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="w-full bg-slate-900 text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 file:cursor-pointer p-1.5 rounded-xl border border-slate-800"
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/80">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    २. वा QR तस्बिरको इन्टरनेट लिङ्क (Image URL) राख्नुहोस्:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://example.com/fonepay-qr.jpg"
+                      value={customQrUrl}
+                      onChange={(e) => setCustomQrUrl(e.target.value)}
+                      className="flex-1 bg-slate-900 text-xs text-white px-3 py-2 rounded-xl border border-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveQrUrl}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                    >
+                      सुरक्षित गर्नुहोस्
+                    </button>
+                  </div>
+                </div>
+
+                {qrSaveMessage && (
+                  <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>{qrSaveMessage}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

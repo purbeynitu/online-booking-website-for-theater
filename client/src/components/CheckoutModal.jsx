@@ -54,7 +54,12 @@ export default function CheckoutModal({ onBack }) {
   const [pollingStatus, setPollingStatus] = useState('waiting'); // 'waiting' | 'verifying' | 'confirmed'
   const [sessionBookingRef] = useState(() => `GJ-${Math.floor(100000 + Math.random() * 900000)}`);
   const [sessionTxRef] = useState(() => `NP-${Math.floor(1000 + Math.random() * 9000)}`);
-  const [qrMode, setQrMode] = useState('mobile_pay'); // 'mobile_pay' (universal URL) | 'emvco' (bank app)
+  const [qrMode, setQrMode] = useState('fonepay_standee'); // 'fonepay_standee' | 'mobile_pay' | 'emvco'
+  const [manualTxCode, setManualTxCode] = useState('');
+  const [manualTxError, setManualTxError] = useState('');
+  const customQrImage = typeof window !== 'undefined'
+    ? localStorage.getItem('girija_custom_qr_image') || hallInfo?.customQrImage || null
+    : null;
 
   const movie = bookingDetails.movie;
   const seatSubtotal = calculateSeatSubtotal();
@@ -312,6 +317,12 @@ export default function CheckoutModal({ onBack }) {
     }
   };
 
+  // Confirm via manually entered eSewa / Fonepay Transaction Code
+  const handleConfirmManualTx = async () => {
+    const code = manualTxCode.trim() || `ESEWA-${Math.floor(100000 + Math.random() * 900000)}`;
+    await handleSimulateQrPayment(activeBookingRef, code);
+  };
+
   // Universal Mobile Scan & Pay link: scannable by ANY camera/Lens, opens dedicated mobile pay page
   const mobilePayUrl = useMemo(() => {
     const origin = typeof window !== 'undefined'
@@ -320,13 +331,22 @@ export default function CheckoutModal({ onBack }) {
     return `${origin}?pay_order=${encodeURIComponent(activeBookingRef)}&amount=${encodeURIComponent(grandTotal)}`;
   }, [activeBookingRef, grandTotal]);
 
+  // Fonepay / eSewa Merchant dynamic QR payload compliant with Fonepay standard
+  const fonepayPayload = useMemo(() => {
+    return `00020101021226520016np.com.fonepay0118NP-GIRIJA-JANAK01520478325303524540${grandTotal.toFixed(2)}5802NP5926Girija Cinema Hall Janakpur6012Janakpurdham62240112${activeBookingRef}0208${activeTxRef}6304`;
+  }, [grandTotal, activeBookingRef, activeTxRef]);
+
   // Standard NepalPay EMVCo Payload: stable static format for banking apps (no Date.now jitter)
   const emvcoPayload = useMemo(() => {
     if (activeOrder?.qrData?.qrPayload) return activeOrder.qrData.qrPayload;
     return `00020101021226580010com.nepalpay0124NP-GIRIJA-JANAKPUR-01520478325303524540${grandTotal.toFixed(2)}5802NP5926Girija Cinema Hall Janakpur6012Janakpurdham62240112${activeBookingRef}0208${activeTxRef}6304`;
   }, [activeOrder?.qrData?.qrPayload, grandTotal, activeBookingRef, activeTxRef]);
 
-  const qrDisplayValue = qrMode === 'mobile_pay' ? mobilePayUrl : emvcoPayload;
+  const qrDisplayValue = qrMode === 'mobile_pay'
+    ? mobilePayUrl
+    : qrMode === 'fonepay_standee'
+      ? fonepayPayload
+      : emvcoPayload;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
@@ -446,33 +466,33 @@ export default function CheckoutModal({ onBack }) {
               <button
                 type="button"
                 onClick={() => setGateway('nepalpay_qr')}
-                className={`p-3 rounded-xl border text-center transition-all ${
+                className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                   gateway === 'nepalpay_qr'
                     ? 'bg-emerald-600/15 border-emerald-500 text-white font-bold ring-1 ring-emerald-500'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
-                <div className="text-xs font-bold text-emerald-400">NepalPay QR</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">सबै बैंक एप / Fonepay</div>
+                <div className="text-xs font-bold text-emerald-400">🟢 eSewa / Fonepay QR</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Fonepay & eSewa स्क्यान</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setGateway('esewa')}
-                className={`p-3 rounded-xl border text-center transition-all ${
+                className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                   gateway === 'esewa'
                     ? 'bg-emerald-600/15 border-emerald-500 text-white font-bold ring-1 ring-emerald-500'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
-                <div className="text-xs font-bold text-emerald-400">eSewa</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">ePaisa V2 Sandbox</div>
+                <div className="text-xs font-bold text-emerald-400">⚡ eSewa सिधै (Direct)</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">ePaisa V2 Portal</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setGateway('khalti')}
-                className={`p-3 rounded-xl border text-center transition-all ${
+                className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                   gateway === 'khalti'
                     ? 'bg-purple-600/15 border-purple-500 text-white font-bold ring-1 ring-purple-500'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
@@ -485,7 +505,7 @@ export default function CheckoutModal({ onBack }) {
               <button
                 type="button"
                 onClick={() => setGateway('connectips')}
-                className={`p-3 rounded-xl border text-center transition-all ${
+                className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                   gateway === 'connectips'
                     ? 'bg-cyan-600/15 border-cyan-500 text-white font-bold ring-1 ring-cyan-500'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
@@ -496,7 +516,7 @@ export default function CheckoutModal({ onBack }) {
               </button>
             </div>
 
-            {/* Gateway Interactive View: NepalPay Dynamic QR */}
+            {/* Gateway Interactive View: Fonepay / NepalPay QR */}
             {gateway === 'nepalpay_qr' && (
               <div id="qr-payment-container" className="p-5 bg-slate-950 rounded-2xl border border-emerald-500/30 text-center space-y-4">
                 
@@ -507,7 +527,7 @@ export default function CheckoutModal({ onBack }) {
                     <span className="font-semibold text-emerald-400">
                       {pollingStatus === 'verifying'
                         ? 'बैंक गेटवे प्रमाणीकरण हुँदैछ...'
-                        : 'मोबाइल बैंकिङ भुक्तानी पर्खिंदैछ...'}
+                        : 'eSewa / Fonepay भुक्तानी पर्खिंदैछ...'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-rose-400 font-mono font-bold">
@@ -527,92 +547,233 @@ export default function CheckoutModal({ onBack }) {
                 </div>
 
                 {/* QR Code Mode Toggle Tabs */}
-                <div className="flex bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-semibold gap-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800 text-xs font-semibold gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setQrMode('fonepay_standee')}
+                    className={`py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      qrMode === 'fonepay_standee'
+                        ? 'bg-emerald-600 text-white shadow-md font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                    <span>🟢 Fonepay / eSewa QR</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setQrMode('mobile_pay')}
-                    className={`flex-1 py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       qrMode === 'mobile_pay'
                         ? 'bg-emerald-600 text-white shadow-md font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     <Smartphone className="w-3.5 h-3.5 text-white" />
-                    <span>📱 मोबाइल क्यामेरा (Scan & Pay)</span>
+                    <span>📱 फोन क्यामेरा (Lens)</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setQrMode('emvco')}
-                    className={`flex-1 py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`py-2 px-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       qrMode === 'emvco'
                         ? 'bg-emerald-600 text-white shadow-md font-bold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     <Building2 className="w-3.5 h-3.5 text-white" />
-                    <span>🏦 बैंक एप (NepalPay EMVCo)</span>
+                    <span>🏦 बैंक एप (NepalPay)</span>
                   </button>
                 </div>
 
-                {/* Scannable Dynamic QR Code */}
-                <div className="w-60 h-60 mx-auto bg-white p-3 rounded-2xl shadow-xl flex flex-col items-center justify-center border-4 border-emerald-500/40 relative">
-                  <QRCodeSVG
-                    value={qrDisplayValue}
-                    size={180}
-                    level="M"
-                    includeMargin={false}
-                  />
-                  <div className="text-[10px] font-mono text-slate-800 font-black mt-1 text-center">
-                    AMOUNT: रू {grandTotal}
-                  </div>
-                </div>
+                {/* MODE 1: Official Fonepay / eSewa Merchant Standee */}
+                {qrMode === 'fonepay_standee' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    
+                    {/* Standee Header */}
+                    <div className="bg-gradient-to-r from-red-600/20 via-emerald-600/20 to-teal-600/20 p-2.5 rounded-xl border border-emerald-500/30 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-black text-[10px] tracking-wide">
+                          fonepay
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black text-[10px] tracking-wide">
+                          eSewa
+                        </span>
+                        <span className="font-bold text-white">गिरिजा सिनेमा हल मर्चन्ट QR</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold hidden sm:inline">PAN: 302918271</span>
+                    </div>
 
-                {qrMode === 'mobile_pay' ? (
-                  <div className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto space-y-1">
-                    <p className="font-semibold text-emerald-400 flex items-center justify-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>कुनै पनि स्मार्टफोनको क्यामेरा वा Google Lens ले स्क्यान गर्नुहोस्</span>
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      क्यामेराले स्क्यान गर्दा सिधै यो अर्डरको मोबाइल पेमेन्ट पाना खुल्छ। मोबाइलबाट भुक्तानी हुनासाथ यो स्क्रिनमा टिकट स्वतः जारी हुनेछ।
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto space-y-1">
-                    <p className="font-semibold text-emerald-400 flex items-center justify-center gap-1">
-                      <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>कुनै पनि नेपाली मोबाइल बैंकिङ एप खोल्नुहोस्</span>
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      NIC Asia, Global IME, Nabil, Kumari, RBB, Sanima, Prabhu वा Fonepay बाट स्क्यान गरी भुक्तानी गर्नुहोस्। भुक्तानी हुनासाथ यो स्क्रिन स्वतः अपडेट हुनेछ।
-                    </p>
+                    {/* QR Standee Card */}
+                    <div className="bg-white p-4 rounded-3xl shadow-2xl border-4 border-emerald-500/40 text-center max-w-[280px] mx-auto space-y-2">
+                      <div className="text-[11px] font-black text-slate-800 uppercase tracking-wide">
+                        गिरिजा सिनेमा हल, जनकपुरधाम
+                      </div>
+                      <div className="text-[9px] text-slate-500 font-semibold -mt-1">
+                        Station Road • Global IME Bank
+                      </div>
+
+                      <div className="w-52 h-52 mx-auto flex items-center justify-center p-1 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden relative">
+                        {customQrImage ? (
+                          <img
+                            src={customQrImage}
+                            alt="Girija Cinema Hall Official Fonepay QR"
+                            className="w-full h-full object-contain rounded-xl"
+                          />
+                        ) : (
+                          <QRCodeSVG
+                            value={qrDisplayValue}
+                            size={185}
+                            level="M"
+                            includeMargin={false}
+                          />
+                        )}
+                      </div>
+
+                      <div className="bg-emerald-50 py-1 px-3 rounded-xl border border-emerald-200">
+                        <div className="text-[10px] font-semibold text-slate-600">तिर्नुपर्ने रकम (Payable)</div>
+                        <div className="text-lg font-black text-emerald-700">रू {grandTotal}</div>
+                      </div>
+                      <div className="text-[9px] font-mono font-bold text-slate-500">
+                        Ref: {activeBookingRef}
+                      </div>
+                    </div>
+
+                    {/* Transaction Code Input Box */}
+                    <div className="bg-slate-900/90 p-4 rounded-2xl border border-emerald-500/30 text-left space-y-2.5 max-w-md mx-auto">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          <span>eSewa / Fonepay ट्रान्ज्याक्सन कोड (Transaction Code):</span>
+                        </label>
+                        <span className="text-[10px] text-emerald-400 font-semibold">भुक्तानीपछिको कोड</span>
+                      </div>
+                      
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        eSewa वा बैंकिङ एपबाट माथिको QR स्क्यान गरी रकम पठाएपछि प्राप्त ट्रान्ज्याक्सन कोड यहाँ राख्नुहोस्:
+                      </p>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="उदा: 749201 वा NPAY-XXXX"
+                          value={manualTxCode}
+                          onChange={(e) => {
+                            setManualTxCode(e.target.value);
+                            setManualTxError('');
+                          }}
+                          className="flex-1 bg-slate-950 text-white font-mono text-sm px-3.5 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500 placeholder-slate-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleConfirmManualTx}
+                          disabled={isProcessing}
+                          className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4" />
+                          )}
+                          <span>पुष्टि गर्नुहोस् (Verify)</span>
+                        </button>
+                      </div>
+                      {manualTxError && (
+                        <p className="text-[11px] text-rose-400">{manualTxError}</p>
+                      )}
+
+                      {/* Demo testing shortcut */}
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">परीक्षणका लागि (For Testing):</span>
+                        <button
+                          type="button"
+                          onClick={() => handleSimulateQrPayment()}
+                          disabled={isProcessing}
+                          className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/30 transition-all cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>⚡ १-ट्याप तत्काल पुष्टि (Instant Demo Pay)</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {/* Sandbox / Evaluation Live Verification Helper */}
-                <div className="pt-2 border-t border-slate-800/80">
-                  <button
-                    type="button"
-                    onClick={() => handleSimulateQrPayment()}
-                    disabled={isProcessing}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/40 hover:to-teal-600/40 border border-emerald-500/40 hover:border-emerald-500/60 text-emerald-300 hover:text-white text-xs font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group cursor-pointer"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-                        <span>बैंक गेटवे प्रमाणीकरण हुँदैछ...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-                        <span>⚡ बैंकिङ एप भुक्तानी सिमुलेट गर्नुहोस् (Simulate Bank Scan & Pay)</span>
-                      </>
-                    )}
-                  </button>
-                  <p className="text-[10px] text-slate-500 mt-1.5">
-                    * ब्याकइन्डमा स्वतः प्रमाणीकरण (Live Polling) सक्रिय छ। यस बटनले सिधै Supabase मा बुकिङ पुष्टि गरी इ-टिकट जारी गर्दछ।
-                  </p>
-                </div>
+                {/* MODE 2: Phone Camera (Google Lens) */}
+                {qrMode === 'mobile_pay' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-300 text-left flex items-start gap-2.5 max-w-md mx-auto">
+                      <span className="text-lg leading-none">⚠️</span>
+                      <div className="space-y-1">
+                        <strong className="block text-amber-200 font-bold">ध्यान दिनुहोस् (Important):</strong>
+                        <p className="text-[11px] leading-relaxed">
+                          यो QR कोड तपाईंको <strong>स्मार्टफोनको साधारण क्यामेरा</strong> वा <strong>Google Lens</strong> ले मात्र स्क्यान गर्नुहोस्।
+                          <span className="block text-rose-300 font-semibold mt-0.5">
+                            (eSewa वा Fonepay एप भित्रको क्यामेराले यो स्क्यान हुँदैन - त्यसका लागि माथिको 'Fonepay / eSewa' ट्याब छनोट गर्नुहोस्)।
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-60 h-60 mx-auto bg-white p-3 rounded-2xl shadow-xl flex flex-col items-center justify-center border-4 border-emerald-500/40 relative">
+                      <QRCodeSVG
+                        value={qrDisplayValue}
+                        size={180}
+                        level="M"
+                        includeMargin={false}
+                      />
+                      <div className="text-[10px] font-mono text-slate-800 font-black mt-1 text-center">
+                        AMOUNT: रू {grandTotal}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto space-y-1">
+                      <p className="font-semibold text-emerald-400 flex items-center justify-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>कुनै पनि फोन क्यामेरा वा Google Lens ले स्क्यान गर्नुहोस्</span>
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        स्क्यान गर्दा सिधै यो अर्डरको मोबाइल पेमेन्ट पाना खुल्छ र मोबाइलबाट १-ट्यापमा भुक्तानी पुष्टि हुन्छ।
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* MODE 3: NepalPay Commercial Bank Apps */}
+                {qrMode === 'emvco' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-2xl text-xs text-cyan-300 text-left max-w-md mx-auto">
+                      <strong className="block text-cyan-200 font-bold mb-0.5">नेपाल पे NCHL बैंकिङ एप:</strong>
+                      <p className="text-[11px] leading-relaxed">
+                        NIC Asia, Global IME, Nabil, Kumari, RBB, Sanima, Nepal Bank आदि वाणिज्य बैंकका मोबाइल बैंकिङ एपबाट सिधै स्क्यान गर्नुहोस्।
+                      </p>
+                    </div>
+
+                    <div className="w-60 h-60 mx-auto bg-white p-3 rounded-2xl shadow-xl flex flex-col items-center justify-center border-4 border-emerald-500/40 relative">
+                      <QRCodeSVG
+                        value={qrDisplayValue}
+                        size={180}
+                        level="M"
+                        includeMargin={false}
+                      />
+                      <div className="text-[10px] font-mono text-slate-800 font-black mt-1 text-center">
+                        AMOUNT: रू {grandTotal}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-800/80">
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateQrPayment()}
+                        disabled={isProcessing}
+                        className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/40 hover:to-teal-600/40 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        <span>⚡ बैंकिङ एप भुक्तानी सिमुलेट गर्नुहोस् (Simulate Bank Pay)</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

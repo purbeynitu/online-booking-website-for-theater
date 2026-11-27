@@ -360,3 +360,22 @@
   - Deployed updated web application live to GitHub Pages via `npx gh-pages -d client/dist` (`Published`).
   - Committed and pushed all changes to GitHub repository remote `origin/main`.
 
+### Interaction 30
+- **Prompt**: `this the thing that shows . fix it /plan` (Attached screenshot of eSewa app error modal: "Sorry, this QR is not supported. Please scan Fonepay Business QR for payment.")
+- **Changes Applied**:
+  - Researched root cause of eSewa in-app scanner rejection: eSewa is strictly on the Fonepay merchant network and expects an authorized Fonepay Business QR or eSewa Merchant QR, rejecting web URLs and non-Fonepay EMVCo codes.
+  - Created implementation plan artifact `fix_esewa_fonepay_qr_plan.md` with detailed architecture and received user approval.
+  - Updated `client/src/components/CheckoutModal.jsx`:
+    - Reorganized gateway tabs with clear distinction: `🟢 eSewa / Fonepay QR`, `⚡ eSewa सिधै (Direct)`, `Khalti`, and `connectIPS`.
+    - Implemented official Girija Cinema Hall Fonepay & eSewa Merchant Standee UI (`qrMode === 'fonepay_standee'`) displaying merchant name, settlement bank, PAN `302918271`, total amount, and fallback/custom QR standee.
+    - Added eSewa / Fonepay 6-digit Transaction Code input field and `पुष्टि गर्नुहोस् (Verify)` action to allow instant ticket issuance upon payment completion in eSewa or banking app.
+    - Added `⚡ १-ट्याप तत्काल पुष्टि (Instant Demo Pay)` shortcut for rapid testing without requiring live NPR transfers.
+    - Added explicit warning banner in `📱 फोन क्यामेरा (Lens)` mode informing users to scan with native phone camera/Google Lens rather than the eSewa app scanner.
+    - Added support for custom merchant QR standee image loaded from `localStorage` (`girija_custom_qr_image`).
+  - Updated `client/src/components/AdminDashboard.jsx`:
+    - Added official Fonepay / eSewa Merchant QR Standee manager in the `NepalPay / Merchant Settings` tab.
+    - Implemented file uploader and URL input to allow cinema administration to upload and update their actual bank-issued Fonepay Merchant QR standee photo.
+  - Verified clean production build using `npm run client:build` (zero errors, bundle size optimized).
+  - Deployed updated frontend live to GitHub Pages via `npx gh-pages -d client/dist` (`Published`).
+  - Committed all updates and pushed to GitHub remote repository (`origin/main`).
+
